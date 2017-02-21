@@ -1,0 +1,49 @@
+&general  
+snow_flag		=.TRUE.
+!elevation of station needed to correct temperatures with DEM
+Elev_station            = 75
+
+!define low and high flow periods for signature calculations
+mm_low  = 5
+mm_high = 10
+
+!dates of all the data (warmup+calibration+validation)
+startdate		= "1976-01-07"
+enddate			= "2003-06-09"
+
+!calibration and validation periods are only used in case Optim_flag is true, calibration period must follow warmup
+warmup_start		= "1976-01-07"
+warmup_end		= "1977-01-06"
+cal_start		= "1977-01-07"
+cal_end			= "1990-01-06"
+val_start		= "1990-01-07"
+val_end			= "2003-06-09"
+
+!filename of DEM
+input_dem		= "DEM.asc"
+
+input_dir		= "/model_input/"
+output_dir		= "/model_output/"
+output_dir_cal		= "/model_output/cal/"
+output_dir_val		= "/model_output/val/"
+                                            
+/
+&optimization  
+Optim_flag             =  .TRUE.
+!Methods:
+!1=monte carlo (creating a pareto front)
+!2=moving window with random samples
+!3=monte carlo random sampling (no pareto, keep all solutions)
+!4=run with resampled parameter sets
+
+Method		       =  2                                                
+Iterations             =  100
+!In case of moving windows:
+window                         = 2 !years
+!dynamic values of root zone storage
+dyn_mode = .FALSE.
+!reads data from Sumax.txt in input directory
+!Additionally, Imax_serie.txt is created with adjusted inteception capacities.
+read_data = .TRUE.
+/
+

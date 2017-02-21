@@ -1,0 +1,136 @@
+PROGRAM flextopo_model
+! Program that runs the flextopo concept with optimization option
+
+!Written by: R.C. Nijzink june 2014
+!References: 
+!Adjustments: 
+
+
+USE mo_flextopo
+USE mo_readdata
+USE mo_multi_obj
+USE mo_objectives
+USE mo_landscape_classes
+USE mo_constraints
+
+IMPLICIT NONE
+
+
+  
+	integer                                 :: itsteps		         ! counter
+	real*8, allocatable,dimension(:)	:: etp_data,prec_data, Qobs_data,q, temp_data
+	real*8, allocatable, dimension(:,:)	:: output
+	character*10, allocatable, dimension(:)	:: dates_data
+	real*8,dimension(25)			:: param
+	real*8,dimension(25)		        :: param_max
+	real*8,dimension(25)			:: param_min
+	real*8,dimension(9)			:: incon
+	real*8           			:: fPlateau
+	real*8           			:: fHillslope
+	real*8           			:: fWetland
+	real*8 , dimension(3)                   :: landscape_per	! degree day factor
+        integer                                 :: iBasin
+        real*8, dimension(:,:), allocatable     :: dem
+        integer, dimension(:,:), allocatable     :: facc
+        integer, dimension(:,:), allocatable     :: fdir
+        real*8, dimension(:,:), allocatable     :: slope
+        real*8                                  :: cellsize
+        real*8                                  :: xllcorner
+        real*8                                  :: yllcorner
+        real*8                                  :: Area_thresh
+        real*8                                  :: Slope_thresh
+        real*8                                  :: Hand_thresh
+        real*8                                  :: nodata
+        integer                                 :: nCols
+        integer                                 :: nRows
+        integer                                 :: i, jj
+        integer                                 :: fileunit
+
+
+print *, "---------------------------------------"
+print *, "               FLEX-TOPO               "
+print *, "              version 1.0              "
+print *, "---------------------------------------"
+print *, "   Delft University of Technology     "
+
+
+print *, ""
+print *, "   Reading input data ..."
+call read_config()
+call read_forcing(etp_data,prec_data, Qobs_data, temp_data, dates_data)
+call read_dem(dem, facc, fdir, slope, nRows, nCols, nodata, cellsize, xllcorner, yllcorner)
+call read_param(param, param_max, param_min, incon, Area_thresh, Slope_thresh, Hand_thresh)
+
+print *, ""
+print *, "   Starting landscape classification ..."
+
+iBasin = 1
+call landscape_classes(dem, slope, fdir, facc, nRows, nCols, Area_thresh, Slope_thresh, Hand_thresh, &
+                       nodata, cellsize, xllcorner, yllcorner, landscape_per )
+
+
+!landscape_per=(/0.14,0.75,0.11/)
+! --run the model without calibration--
+if(Optim_flag .eqv. .FALSE.) then
+
+print *, ""
+print *, "   Starting FLEX-TOPO ..."
+
+call flextopo(param,incon, landscape_per, prec_data, temp_data, etp_data, dem, cellsize, output)
+
+print *, ""
+print *, "   Saving output ..."
+do i=1, 32
+
+fileunit=1
+
+
+
+open(fileunit, file=trim(adjustl(output_dir)) // trim(fluxes_states_names(i)), status='unknown', action='write')
+	do jj=1, size(output(1,:)) 
+  	write(fileunit,'((f6.2))'), output(i,jj)
+	end do
+ close(fileunit)
+
+
+
+end do
+
+print *, ""
+print *, "   FLEX-TOPO finished!"
+
+
+! --Start optimization--
+else
+
+if( Method .eq. 1) then
+print *, ""
+print *, "Start Monte Carlo optimization ..."
+
+call multi_obj(param_max,param_min,incon, landscape_per, prec_data,temp_data, etp_data,&
+               dem, cellsize, Qobs_data, dates_data)
+end if
+
+! --Start constraints module--
+if( Method .eq. 2) then
+print *, ""
+print *, "   Start constraint based ..."
+call constraints(param_max,param_min,incon, landscape_per, prec_data,temp_data,etp_data,&
+                 dem, cellsize, Qobs_data, dates_data)
+
+end if
+
+
+
+
+
+print *, ""
+print *, "  FLEX-TOPO Finished!"
+end if
+
+
+
+
+
+
+END PROGRAM

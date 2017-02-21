@@ -1,0 +1,906 @@
+MODULE mo_constraints
+
+! Module for optimization of the HBV model by Monte Carlo simulation. It will produce several files in the folders "Cal" and "Val":
+! Pareto_Q.txt  		: simulated river discharge for all pareto optimal solutions
+! Swe.txt			: snow water equivalent for all pareto optimal solutions
+! rmoist.txt			: relative moisture content for all pareto optimal solutions.
+! rain.txt			: rain for all pareto optimal solutions  
+! snow.txt			: snow  for all pareto optimal solutions
+! melt.txt			: melt water equivalent for all pareto optimal solutions
+! q0.txt			: surface runoff for all pareto optimal solutions
+! q1.txt			: fast runoff for all pareto optimal solutions
+! q2.txt			: slow runoff for all pareto optimal solutions
+! eta.txt			: evaporation for all pareto optimal solutions
+! suz.txt			: upper zone storage for all pareto optimal solutions
+! slz.txt			: lower zone storage for all pareto optimal solutions
+! rslz.txt			: relative lower zone storage for all pareto optimal solutions
+! Objectives.txt		: objective function values for all pareto optimal solutions
+! Pareto_parameters.txt		: parameters for all pareto optimal solutions
+! Feasible_objectives.txt	: objective function values all feasible solutions (0>)
+
+!Written by: R.C. Nijzink June 2014
+!References: 
+!Adjustments: 
+
+
+
+IMPLICIT NONE
+
+CONTAINS
+
+	subroutine constraints(par_max,par_min,incon, prec_data,temp_data,etp_data, &
+                               dem, cellsize, Qobs_data, dates_data)
+		
+USE mo_model
+USE mo_readdata
+USE mo_objectives
+USE mo_eval_signatures
+USE mo_init_random_seed
+
+	real*8,dimension(4), intent(in)		        :: incon	! initial conditions states
+	real*8,dimension(4)	        		:: incon_val	! initial conditions states
+	real*8,dimension(:), allocatable, intent(in)	:: etp_data	! evaporation data
+	real*8,dimension(:), allocatable, intent(in)	:: prec_data 	! precipitation data
+	real*8,dimension(:), allocatable, intent(in)	:: temp_data 	! temperature data
+        real*8, dimension(:,:), allocatable, intent(in)     :: dem
+        real*8,intent(in)                       :: cellsize
+	real*8,dimension(:), allocatable, intent(in)	:: Qobs_data	! observed discharge
+	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
+	real*8						:: alpha	! pareto_bound
+        real*8,dimension(13) 				:: r		! random number array
+        real*8 		                 		:: r2		! random number array
+        real*8           				:: r3		! random number array
+        real*8             				:: r4		! random number array
+	real*8, dimension(:,:), allocatable 	        :: EC    	! evalutation criteria
+	real*8, dimension(:,:), allocatable 	        :: ECval    	! evalutation criteria
+        integer                                         :: fileunit     ! file unit
+	real*8,dimension(13), intent(in)		:: par_max	! maximum parameter values
+	real*8,dimension(13), intent(in)		:: par_min	! minimum parameter values
+	real*8,dimension(13)             		:: paramset	! set of parameters
+	real*8,allocatable, dimension(:)		:: q		! modelled discharge
+	real*8,allocatable, dimension(:)		:: qval		! validation discharge
+	real*8						:: NSE		! Nash-Sutcliffe efficienct
+	real*8						:: LNSE		! log NSE
+	real*8						:: VE		! Volume error
+	real*8						:: FDC_NSE	! Nash of flow duration curve
+	real*8						:: NSE_val	! NSE for validation	
+	real*8						:: LNSE_val	! log NSE for validation
+	real*8						:: VE_val	! Volume error validation
+	real*8						:: FDC_NSE_val	! validation Nash FDC
+	integer						:: length	! length of period
+	integer						:: val_length	! length of validation period
+	real*8, allocatable, dimension(:,:)	        :: output	! output matrix
+	real*8, allocatable, dimension(:,:)	        :: output_val	! output matrix validation
+	integer						:: nn 		! counter
+	integer, allocatable, dimension(:)		:: seed		! initial random seed
+	integer						:: t		! counter
+	integer						:: count_feasibles !number of feasible sets
+	integer						:: count_solutions !number of final solutions
+	integer						:: jj		! counter
+	integer						:: jmax		! counter
+	integer						:: i		! counter
+	integer						:: kk		! counter
+	integer						:: k1		! counter
+	integer						:: k2		! counter
+	integer						:: kmax		! counter
+	integer						:: rr		! counter
+	integer						:: dd		! counter
+
+	integer						:: C, M, K      ! temp variables
+
+	integer, dimension(:), allocatable       	:: mm		! counter
+	integer						:: ii		! counter
+	real*8						:: bound1	! pareto_bound
+	real*8						:: bound2	! pareto_bound
+	real*8						:: bound3	! pareto_bound
+	real*8						:: bound4	! pareto_bound
+	real*8						:: RC_low	! pareto_bound
+	real*8						:: RC_up	! pareto_bound
+	real*8						:: RCdry_low	! pareto_bound
+	real*8						:: RCdry_up	! pareto_bound
+	real*8						:: RCwet_low	! pareto_bound
+	real*8						:: RCwet_up	! pareto_bound
+	real*8, dimension(:,:), allocatable		:: param_1	! matrix with parameters
+	real*8, dimension(:,:), allocatable		:: param_2    	! matrix with parameters
+	real*8, dimension(:,:), allocatable		:: param_3    	! matrix with parameters
+	real*8, dimension(:,:), allocatable		:: param_4   	! matrix with parameters
+	real*8, dimension(:,:), allocatable		:: param_out   	! matrix with parameters
+	real*8, dimension(:,:), allocatable		:: q_mat	! matrix with modelled Q
+	real*8, dimension(:,:), allocatable		:: qval_mat	! matrix with validated Q
+	real*8, dimension(:), allocatable		:: prec_cal	! matrix with validated Q
+	real*8, dimension(:), allocatable		:: temp_cal	! matrix with validated Q
+	real*8, dimension(:), allocatable		:: etp_cal	! matrix with validated Q
+	character*10, dimension(:), allocatable		:: dates_cal	! matrix with validated Q
+	real*8, dimension(:,:,:), allocatable		:: output_mat	! output matrix
+	real*8, dimension(:,:,:), allocatable		:: output_final	! output matrix
+	real*8, dimension(:,:), allocatable		:: outputval_mat! output validation		
+	real*8, dimension(:,:), allocatable		:: obj_mat	! matrix with objective functions
+	real*8, dimension(:,:), allocatable		:: objval_mat	! matrix with validation objective functions
+        integer, dimension(:), allocatable              :: ind_low
+        integer, dimension(:), allocatable              :: ind_high
+	logical, dimension(:), allocatable		:: temp, temparam_2	! temperoray arrays
+	logical, dimension(:), allocatable		:: behavioural	! temperoray arrays
+	character(256)                        		:: formData	! format of data
+	character(256)                        		:: formDataObj	! format of data objectives
+	character(256)                        		:: formDataPar	! format of data parameters
+	character(256)                        		:: formHeader	! format of data headers
+	character(256)                        		:: formHeaderPar! format of headers
+	integer						:: pareto_length! number of pareto solutions
+	integer						:: uQ 		! file unit Q
+	integer						:: uQval	! file unit Q
+	integer						:: uPar		! file unit parameters
+	integer						:: uObj		! file unit objectives
+	integer						:: uObjval	! file unit objectives valdation
+	integer						:: uSig		! file unit parameters
+	integer						:: uSigval	! file unit parameters
+	real*8, dimension(:), allocatable		:: Qf_wetland_wet_peak	
+	real*8, dimension(:), allocatable		:: Qf_hillslope_wet_peak
+	real*8, dimension(:), allocatable		:: Qf_wetland_dry_peak	
+	real*8, dimension(:), allocatable		:: Qf_hillslope_dry_peak
+
+uQ=1
+uQval=2
+uPar=3
+uObj=4
+uObjval=5
+uSig=7
+uSigval=8
+
+ C=2    !Number of process based constraints that is met
+ M=7    !Number of process based constraints
+ K=N_samples
+
+
+length=size(prec_data( iw_start:ic_end ))
+
+
+
+
+allocate( prec_cal( length) )
+allocate( temp_cal( length) )
+allocate( etp_cal( length) )
+allocate( dates_cal( length) )
+allocate( q( length) )
+allocate( output_mat(length, 11, N_samples ) )
+allocate( output_final(length, 11, N_samples ) )
+allocate( param_1(13, N_samples ) )
+allocate( param_2(13, N_samples ) )
+allocate( param_3(13, N_samples ) )
+allocate( param_4(13, N_samples ) )
+allocate( param_out(13, N_samples ) )
+allocate( behavioural( N_samples ) )
+allocate( mm( N_samples ) )
+
+
+prec_cal = prec_data( iw_start:ic_end )
+etp_cal = etp_data( iw_start:ic_end )
+dates_cal = dates_data( iw_start:ic_end )
+prec_cal = prec_data( iw_start:ic_end )
+temp_cal = temp_data( iw_start:ic_end )
+
+call init_random_seed()
+
+
+! preparation part; determine runoff-coefficient with Budyko (mean, highflow, lowflow
+
+call runoff_coefficient(etp_cal, prec_cal, dates_cal, RC_low, RC_up, RCdry_low, RCdry_up, RCwet_low, RCwet_up, ind_low, ind_high)
+
+
+! remove warming period from ind_low and ind_high
+do i=1, size(ind_low)
+if(ind_low(i) .le. iw_end) then
+ind_low(i) = -9999
+end if
+end do 
+
+
+ind_low = pack(ind_low, (ind_low /= int(-9999)) )
+
+do i=1, size(ind_high)
+if(ind_high(i) .le. iw_end) then
+ind_high(i) = -9999
+end if 
+end do
+
+ind_high = pack(ind_high, (ind_high /= int(-9999)) )
+
+
+do while(C .lt. M) !C : # process based constraints that is met, M total number of process based constraints
+
+   if(C .eq. 2) then
+print *, "Creating initial random parameter set ... "
+     do i=1, N_samples
+        call random_number(r)
+	param_1(:,i)=r*(par_max-par_min)+par_min
+     end do
+   end if
+
+   ! check a priori constraints
+   jj = 0
+   kk = 0
+
+     do i=1, N_samples
+
+       if((param_1(3,i)  .lt. param_1(9,i) )   .and. & !Imax_p < Imax_h
+       (param_1(17,i) .lt. param_1(9,i) )   .and. & !Imax_w < Imax_h
+
+       (param_1(13,i) .lt. param_1(7,i) )   .and. & !Nlags_h < Nlags_p
+
+       (param_1(18,i) .lt. param_1(4,i) )   .and. & !Sumax_w < Sumax_p
+       (param_1(4,i)  .lt. param_1(10,i))   .and. & !Sumax_p < Sumax_h
+
+       (param_1(22,i) .lt. param_1(14,i))   .and. & !Kf_w < Kf_h
+       (param_1(14,i) .lt. param_1(23,i)) ) then    !Kf_h < Ks_w 
+
+       behavioural(i) = .TRUE. 
+       end if
+     end do
+
+   do i=1, N_samples
+   mm(i) = 0
+
+      if( behavioural(i) ) then 
+
+      ! run the model 
+           call model(param_1(:,i), incon, prec_data, temp_data ,etp_data, dem, cellsize, output)
+
+
+prec_cal = prec_data( iw_start:ic_end )
+etp_cal = etp_data( iw_start:ic_end )
+dates_cal = dates_data( iw_start:ic_end )
+prec_cal = prec_data( iw_start:ic_end )
+temp_cal = temp_data( iw_start:ic_end )
+
+
+
+      ! save output in matrix, only what we need...
+
+	   output_mat(:,1,i)=output(1,:)
+	   output_mat(:,2,i)=output(17,:)
+	   output_mat(:,3,i)=output(18,:)
+	   output_mat(:,4,i)=output(8,:)
+	   output_mat(:,5,i)=output(9,:)
+	   output_mat(:,6,i)=output(3,:)
+	   output_mat(:,7,i)=output(4,:)
+	   output_mat(:,8:16,i)=output(24:32,:)
+
+
+      !check a posteriori process based constraints
+
+           !-- Transpiration--
+
+           ! 0.2 < Rs_hillslope/Rs_plateau Rs_hillslope/Rs_plateau < 5
+         if((0.2 .lt. (sum(output_mat(iw_end+1:ic_end,3,i) ) / sum( output_mat(iw_end+1:ic_end,2,i) )))  .and. &      ! 
+                  ((sum(output_mat(iw_end+1:ic_end,3,i) ) / sum(output_mat(iw_end+1:ic_end,2,i)) ) .lt. 5))  then !       
+         mm(i)=mm(i) + 1
+!print *, 1
+         end if
+
+           ! 1 < Eadt_hillslope/Eadt_plateau < 1.4
+           if( (1 .lt. ( sum(output_mat(iw_end+1:ic_end,5,i) ) / sum(output_mat(iw_end+1:ic_end,4,i)) ) ) .and. &          
+                   ((sum(output_mat(iw_end+1:ic_end,5,i) ) / sum(output_mat(iw_end+1:ic_end,4,i))) .lt. 1.4))  then !       
+           mm(i)=mm(i) + 1
+!print *, 2
+           end if
+
+
+           !-- Runoff coefficient--
+
+           ! RC_low <   Qm/P  < RC_upper 
+           if( (( sum( output_mat(iw_end+1:ic_end,1,i) ) / sum( prec_cal(iw_end+1:ic_end) ) ) .lt. RC_up) .and. &   
+               (( sum( output_mat(iw_end+1:ic_end,1,i) ) / sum( prec_cal(iw_end+1:ic_end) ) ) .gt. RC_low) ) then 
+           mm(i)=mm(i) + 1
+!print *, 3
+           end if
+
+
+           ! RCdry_low < Qm/P   < RCdry_upper
+  !         if( (( sum( output_mat(ind_low,1,i) ) / sum( prec_cal(ind_low) ) ) .lt. RCdry_up) .and. &   
+  !             (( sum( output_mat(ind_low,1,i) ) / sum( prec_cal(ind_low) ) ) .gt. RCdry_low) ) then  
+  !         mm(i)=mm(i) + 1
+!print *, 4
+  !         end if
+
+!print *, RCdry_up, RCdry_low
+
+
+           ! RCwet_low <   Qm/P  < RCwet_upper 
+   !        if( (( sum( output_mat(ind_high,1,i) ) / sum( prec_cal(ind_high) ) ) .lt. RCwet_up) .and. &   
+   !            (( sum( output_mat(ind_high,1,i) ) / sum( prec_cal(ind_high) ) ) .gt. RCwet_low) ) then  
+   !        mm(i)=mm(i) + 1
+!print *, 5
+   !        end if
+
+          !-- Fast component discharge--
+
+          !Qf_wetland_dry > Qf_hillslope_dry
+
+           if( (( sum( output_mat(ind_low,6,i) ) / sum( output_mat(ind_low,7,i) ) ) .lt. 1) ) then  
+           mm(i)=mm(i) + 1
+!print *, 6
+           end if
+
+          !Qf_wetland_dry_peaks > Qf_hillslope_dry_peaks
+           call PeakFlows(output_mat(ind_low,6,i), Qf_hillslope_dry_peak)
+           call PeakFlows(output_mat(ind_low,7,i), Qf_wetland_dry_peak)
+
+           if( (( sum( Qf_hillslope_dry_peak ) / sum( Qf_wetland_dry_peak ) ) .lt. 1) ) then 
+           mm(i)=mm(i) + 1
+!print *, 7
+           end if
+
+          !Qf_wetland_wet < Qf_hillslope_wet
+           if( (( sum( output_mat(ind_high,6,i) ) / sum( output_mat(ind_high,7,i) ) ) .gt. 1) ) then  
+           mm(i)=mm(i) + 1
+!print *, 8
+           end if
+
+          !Qf_wetland_wet_peaks < Qf_hillslope_wet_peaks
+           call PeakFlows(output_mat(ind_high,6,i), Qf_hillslope_wet_peak)
+           call PeakFlows(output_mat(ind_high,7,i), Qf_wetland_wet_peak)
+
+           if( (( sum( Qf_hillslope_wet_peak ) / sum( Qf_wetland_wet_peak ) ) .gt. 1) ) then 
+           mm(i)=mm(i) + 1
+!print *, 9
+           end if
+
+      end if
+
+      ! check how many process based constraints are met
+      if(  mm(i) .ge. C) then
+      jj=jj+1
+      param_2(:,jj)  = param_1(:,i)
+      output_final(:,:,jj)   = output_mat(:,:,i) 
+      end if
+  
+      if(    mm(i) .eq. (C-1) ) then
+      kk=kk+1
+      param_3(:,kk) = param_1(:,i) 
+      end if
+
+      jmax = jj
+      kmax = kk
+
+   end do
+
+   if( (jmax .gt. 0) .and. (kmax .gt. 0) ) then
+
+      do kk = 1, floor(real(K)/3)
+        call random_number(r2)
+        k1 = floor(  r2*(real(jmax)-1) )
+        call random_number(r3)
+        k2 = floor(  r3*(real(jmax)-1) )
+        call random_number(alpha)
+
+        param_4(:,kk) = alpha * param_2(:,k1) + (1-alpha) * param_3(:,k2)
+      end do
+
+      do kk = floor(real(K)/3)+1 , floor(real(K)*2/3)
+       call random_number(r2)
+       k1 = floor(  r2*(real(jmax)-1) )
+       call random_number(r3)
+       k2 = floor(  r3*(real(kmax)-1) )
+       call random_number(alpha)
+
+       param_4(:,kk)=alpha*param_2(:,k1)+(1-alpha)*param_3(:,k2)
+      end do
+
+     do kk=floor(real(K)*2/3)+1 , K
+       call random_number(r2)
+       k1 = floor(  r2*(real(kmax)-1) )
+       call random_number(r3)
+       k2 = floor(  r3*(real(kmax)-1) )
+       call random_number(alpha)
+
+       param_4(:,kk)=alpha*param_2(:,k1)+(1-alpha)*param_3(:,k2)
+     end do
+
+   param_1 = param_4
+
+
+   C = C + 1
+   print *, "Process based constraints" , C, "out of" , M
+
+   end if
+
+   if( (jmax .gt. 0) .and. (kmax .eq. 0) ) then
+
+      do kk = 1, K
+        call random_number(r2)
+        k1 = floor(  r2*(real(jmax)-1) )
+        call random_number(r3)
+        k2 = floor(  r3*(real(jmax)-1) )
+        call random_number(alpha)
+
+        param_4(:,kk) = alpha * param_2(:,k1) + (1-alpha) * param_3(:,k2)
+      end do
+
+   param_1 = param_4
+
+
+   C = C + 1
+   print *, "Process based constraints" , C, "out of" , M
+
+   end if
+
+
+print *, ""
+print *, "Found", jmax, "solutions"
+print *, ""
+
+
+if( jmax .eq. 0) then
+
+!go one step back
+print *, ""
+print *, "No more solutions found, restarting ..."
+
+ C = 2
+
+
+end if
+
+
+
+
+! end while loop
+end do
+
+print *, ""
+print *, "Determine objectives..."
+print *, ""
+
+allocate( obj_mat(4, jmax) )
+
+do nn=1, jmax
+
+
+	!determine objectives
+	 call NashEfficiency(Qobs_data(iw_end+1:ic_end),    &
+              output_final(iw_end+1:ic_end,1,nn), NSE)
+	 call LogNashEfficiency(Qobs_data(iw_end+1:ic_end), &
+              output_final(iw_end+1:ic_end,1,nn), LNSE)
+	 call VolumeError(Qobs_data(iw_end+1:ic_end),       &
+              output_final(iw_end+1:ic_end,1,nn), VE)
+	 call FDCNashEfficiency(Qobs_data(iw_end+1:ic_end), &
+              output_final(iw_end+1:ic_end,1,nn), FDC_NSE)
+
+	obj_mat(:,nn)= (/NSE, LNSE, VE, FDC_NSE/)
+
+end do
+
+print *, "Max NSE:"
+print *, maxval(obj_mat(1,:))
+print *, "Max LNSE:"
+print *, maxval(obj_mat(2,:))
+print *, "Max VE:"
+print *, maxval(obj_mat(3,:))
+print *, "Max FDC_NSE:"
+print *, maxval(obj_mat(4,:))
+
+
+!validate
+
+val_length=size(prec_data( iv_start:iv_end ))
+allocate( outputval_mat (val_length, jmax) )
+allocate( qval( val_length) )
+allocate( qval_mat( val_length, jmax) )
+allocate( objval_mat( 4, jmax) )
+
+
+
+print *, ""
+print *, "Determine signatures ..."
+print *, ""
+
+allocate( EC(jmax, 26) )
+
+do i=1, jmax
+
+call eval_signatures(output_final(iw_end+1:ic_end,1,i), Qobs_data(iw_end+1:ic_end), prec_data(iw_end+1:ic_end),&
+                    dates_data(iw_end+1:ic_end), .FALSE., EC(i,:) )
+end do
+
+
+
+
+
+print *, ""
+print *, "Start validation ... " 
+print *, ""
+
+do ii=1, jmax
+
+incon_val = output_final(ic_end,8:11,ii) 
+
+!call flextopo(param_2(:,ii),incon_val, landscape_per, prec_data( iv_start:iv_end ) &
+	!,temp_data(iv_start:iv_end),etp_data(iv_start:iv_end), dem, cellsize, output_val)
+
+
+	qval=output_final(iv_start:iv_end,1,ii)
+
+	 call NashEfficiency(Qobs_data(iv_start:iv_end),qval, NSE_val)
+	 call LogNashEfficiency(Qobs_data(iv_start:iv_end),qval, LNSE_val)
+	 call VolumeError(Qobs_data(iv_start:iv_end),qval, VE_val)
+	 call FDCNashEfficiency(Qobs_data(iv_start:iv_end),qval, FDC_NSE_val)
+
+	qval_mat(:,ii) = qval
+
+	objval_mat(:,ii)= (/NSE_val, LNSE_val, VE_val, FDC_NSE_val/)
+
+
+	outputval_mat(:,ii)=qval
+
+
+end do
+
+print *, "Max NSE:"
+print *, maxval(objval_mat(1,:))
+print *, "Max LNSE:"
+print *, maxval(objval_mat(2,:))
+print *, "Max VE:"
+print *, maxval(objval_mat(3,:))
+print *, "Max FDC_NSE:"
+print *, maxval(objval_mat(4,:))
+
+print *, "Determine signatures validation..."
+allocate( ECval(jmax, 26) )
+
+do i=1, jmax
+
+call eval_signatures(outputval_mat(:,i), Qobs_data(iv_start:iv_end), prec_data(iv_start:iv_end),dates_data(iv_start:iv_end), &
+                     .FALSE., ECval(i,:) )
+
+end do
+
+
+print *, ""
+print *, "Saving results..."
+print *, ""
+
+
+! write output calibration and validation
+
+
+  open(uQ, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Q_constraints.txt")), status='unknown', action='write')
+	do jj=iw_end+1,ic_end 
+  	write(uQ,'(100000(1X f6.2))'),  output_final(jj,1,1:jmax)
+	end do
+ close(uQ)
+
+open(uQval, file=trim(adjustl(output_dir_val)) // trim(adjustl("Q_constraints.txt")), status='unknown', action='write')
+	do jj=1,val_length 
+  	write(uQval,'(100000(1X f6.2))'),  outputval_mat(jj,1:jmax)
+	end do
+ close(uQval)
+
+
+
+! objective function outputs
+
+write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10)'
+write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
+open(uObj, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
+write(uObj,formHeader), 'NSE','LNSE','VE','LNSE_FDC'
+	do jj=1,jmax 
+  	write(uObj,formDataObj),  obj_mat(1:4,jj)
+	end do
+ close(uObj)
+
+
+write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10)'
+write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
+open(uObjval, file=trim(adjustl(output_dir_val)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
+write(uObjval,formHeader), 'NSE','LNSE','VE','LNSE_FDC'
+	do jj=1,jmax
+  	write(uObjval,formDataObj),  objval_mat(1:4,jj)
+	end do
+ close(uObjval)
+
+
+! Paremeters determined in calibration and used in validation
+
+
+open(uPar, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Constraints_parameters.txt")), status='unknown', action='write')
+write(uPar,'(25(1X a8))'),  "Meltfactor", "Tthresh", "Imax_p", "Sumax_p", "beta_p", "Pmax_p", "Nlags_p",  "Lp_p", &
+ "Imax_h", "Sumax_h", "beta_h", "Nlagf_h", "Nlags_h", "Kf_h", "LP_h", "D_h", "Imax_w", "Sumax_w", "beta_w",       &
+ "Pmax_w", "Nlagf_w", "Kf_w", "Ks_w", "LP_w", "Cmax_w"
+
+	do jj=1,jmax
+  	write(uPar,'(25(1X f6.2))'),  param_2(1:25, jj)
+	end do
+ close(uPar)
+
+
+
+
+open(uSig, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Signatures.txt")), status='unknown', action='write')
+write(uSig,'(26(1X a15))'),  "Q_MA", "AC", "AC_low", "AC_high", "RLD", "DLD", "Q5",  "Q50", &
+ "Q95", "Q5_low", "Q50_low", "Q95_low", "Q5_high", "Q50_high", "Q95_high", "Peaks", "Peaks_low", "Peaks_high", "Qpeak10",       &
+ "Qpeak50", "Qlow_peak10", "Qlow_peak50", "Qhigh_peal10", "Qhigh_peak50", "FDC_serie", "AC_serie"
+
+
+
+	do jj=1,jmax
+  	write(uSig,'(26(1X f6.2))'),  EC(jj, :)
+	end do
+ close(uSig)
+
+open(uSigval, file=trim(adjustl(output_dir_val)) // trim(adjustl("Signatures.txt")), status='unknown', action='write')
+write(uSigval,'(26(1X a15))'),  "Q_MA", "AC", "AC_low", "AC_high", "RLD", "DLD", "Q5",  "Q50", &
+ "Q95", "Q5_low", "Q50_low", "Q95_low", "Q5_high", "Q50_high", "Q95_high", "Peaks", "Peaks_low", "Peaks_high", "Qpeak10",       &
+ "Qpeak50", "Qlow_peak10", "Qlow_peak50", "Qhigh_peal10", "Qhigh_peak50", "FDC_serie", "AC_serie"
+
+
+
+	do jj=1,jmax
+  	write(uSigval,'(26(1X f6.2))'),  ECval(jj, :)
+	end do
+ close(uSigval)
+
+
+
+
+
+
+
+print *, "Optimization finished!"
+
+
+
+
+end subroutine
+
+
+
+
+!---------------------------------------------------------------------------------------------
+
+subroutine runoff_coefficient(etp_data, prec_data, dates_data, RC_min, RC_max, RClow_min, RClow_max, RChigh_min, RChigh_max,&
+                              ind_low_final, ind_high_final)
+
+  USE mo_readdata
+
+  IMPLICIT NONE
+
+	real*8,dimension(:), intent(in)	                :: etp_data	! evaporation data
+	real*8,dimension(:), intent(in)	                :: prec_data 	! precipitation data
+	character*10,dimension(:), intent(in)	        :: dates_data 	! precipitation data
+	real*8, dimension(:), allocatable		:: DI   	! dryness index
+	real*8, dimension(:), allocatable		:: RC   	! runoff coefficient
+	real*8, dimension(:), allocatable		:: DI_low   	! dryness index
+	real*8, dimension(:), allocatable		:: RC_low   	! runoff coefficient
+	real*8, dimension(:), allocatable		:: DI_high   	! dryness index
+	real*8, dimension(:), allocatable		:: RC_high   	! runoff coefficient
+	real*8						:: prec_sum   	! runoff coefficient
+	real*8						:: etp_sum   	! runoff coefficient
+	real*8						:: prec_low_sum   	! runoff coefficient
+	real*8						:: etp_low_sum   	! runoff coefficient
+	real*8						:: prec_high_sum   	! runoff coefficient
+	real*8						:: etp_high_sum   	! runoff coefficient
+	real*8, intent(out)				:: RC_min   	! runoff coefficient
+	real*8, intent(out)				:: RC_max   	! runoff coefficient
+	real*8, intent(out)				:: RClow_min   	! runoff coefficient
+	real*8, intent(out)				:: RClow_max   	! runoff coefficient
+	real*8, intent(out)				:: RChigh_min 	! runoff coefficient
+	real*8, intent(out)				:: RChigh_max 	! runoff coefficient
+	integer						:: countyear	! counter
+        integer                                         :: dd
+        integer                                         :: length
+        integer, dimension(:), allocatable              :: ind_low
+        integer, dimension(:), allocatable              :: ind_high
+        integer, dimension(:), allocatable, intent(out) :: ind_low_final
+        integer, dimension(:), allocatable, intent(out) :: ind_high_final
+	character*10			                :: temp_date
+	character*10			                :: temp2_date
+	character*10			                :: temp_month
+        real*8                                          :: month
+	real*8			                        :: low_start
+	real*8			                        :: low_end
+        integer                                         :: hh, ll
+
+length=size(prec_data)
+
+allocate( DI (length/365+2 ) )
+allocate( RC (length/365+2 ) )
+
+allocate( DI_high (length/365+2 ) )
+allocate( RC_high (length/365+2 ) )
+
+allocate( DI_low (length/365+2 ) )
+allocate( RC_low (length/365+2 ) )
+
+allocate( ind_low (length ) )
+allocate( ind_high (length) )
+
+low_start = mm_low
+low_end   = mm_high
+      etp_sum = 0
+      prec_sum =0
+
+      etp_low_sum = 0
+      prec_low_sum =0
+
+      etp_high_sum = 0
+      prec_high_sum =0
+
+      ind_low = -9999
+      ind_high= -9999
+hh = 0
+ll = 0
+
+countyear = 1
+
+
+temp2_date = dates_data(1)
+do dd = 1 , length
+   temp_date = dates_data (dd)
+
+
+   if( temp_date(7:10) .eq. temp2_date(7:10) ) then
+
+   etp_sum = etp_sum + etp_data(dd)
+   prec_sum = prec_sum + prec_data(dd)
+
+
+   temp_month = temp_date(4:5)
+   read(temp_month,*) month
+
+if(mm_low .lt. mm_high) then
+
+   if( (month .ge. mm_low) .and. (month .lt. mm_high) ) then
+   etp_low_sum = etp_low_sum + etp_data(dd)
+   prec_low_sum = prec_low_sum + prec_data(dd)
+   ll = ll+1   
+   ind_low(ll) = dd
+
+   else
+   etp_high_sum = etp_high_sum + etp_data(dd)
+   prec_high_sum = prec_high_sum + prec_data(dd)
+   hh = hh + 1   
+   ind_high(hh) = dd
+   end if
+
+else
+
+   if( (month .ge. mm_low) .or. (month .lt. mm_high) ) then
+   etp_low_sum = etp_low_sum + etp_data(dd)
+   prec_low_sum = prec_low_sum + prec_data(dd)
+   ll = ll+1   
+   ind_low(ll) = dd
+
+   else
+   etp_high_sum = etp_high_sum + etp_data(dd)
+   prec_high_sum = prec_high_sum + prec_data(dd)
+   hh = hh + 1   
+   ind_high(hh) = dd
+   end if
+
+
+end if
+
+
+   else
+
+      DI( countyear ) = etp_sum / prec_sum
+      RC( countyear ) = 1 - sqrt( DI(countyear) * tanh(1/ DI(countyear) ) * (1 - exp(-DI(countyear)) ) )
+
+      DI_low( countyear ) = etp_low_sum / prec_low_sum
+      RC_low( countyear ) = 1 - sqrt( DI_low(countyear) * tanh(1/ DI_low(countyear) ) * (1 - exp(-DI_low(countyear)) ) ) 
+
+      DI_high( countyear ) = etp_high_sum / prec_high_sum
+      RC_high( countyear ) = 1 - sqrt( DI_high(countyear) * tanh( 1/DI_high(countyear) ) * (1 - exp(-DI_high(countyear)) ) )    
+
+      etp_sum = 0
+      prec_sum =0
+
+      etp_low_sum = 0
+      prec_low_sum =0
+
+      etp_high_sum = 0
+      prec_high_sum =0
+
+      countyear = countyear + 1
+
+   end if
+
+
+ temp2_date = temp_date
+
+end do
+
+
+!filling the last year 
+
+      DI( countyear ) = etp_sum / prec_sum
+      RC( countyear ) = 1 - sqrt( DI(countyear) * tanh(1/ DI(countyear) ) * (1 - exp(-DI(countyear)) ) )
+
+      DI_low( countyear ) = etp_low_sum / prec_low_sum
+      RC_low( countyear ) = 1 - sqrt( DI_low(countyear) * tanh(1/ DI_low(countyear) ) * (1 - exp(-DI_low(countyear)) ) ) 
+
+      DI_high( countyear ) = etp_high_sum / prec_high_sum
+      RC_high( countyear ) = 1 - sqrt( DI_high(countyear) * tanh( 1/DI_high(countyear) ) * (1 - exp(-DI_high(countyear)) ) )    
+
+
+
+
+
+
+
+
+
+
+RC_min = minval(RC(1:countyear))
+RC_max = maxval(RC(1:countyear))
+
+RClow_min = minval(  RC_low( 2:countyear-1) ) ! to make sure only whole years are used
+RClow_max = maxval(  RC_low( 2:countyear-1) )
+
+RChigh_min = minval(RC_high( 2:countyear-1) )
+RChigh_max = maxval(RC_high( 2:countyear-1) )
+
+
+if( countyear-1 .eq. 2) then ! exception
+RClow_min = minval(  RC_low( 1:countyear) ) 
+RClow_max = maxval(  RC_low( 1:countyear) )
+
+RChigh_min = minval(RC_high( 1:countyear) )
+RChigh_max = maxval(RC_high( 1:countyear) )
+end if
+
+
+
+
+
+
+
+ind_high_final = pack(ind_high, (ind_high >= int(1)) )
+ind_low_final = pack(ind_low, (ind_low >= int(1))    )
+
+
+
+end subroutine
+
+
+!---------------------------------------------------------------------------------------------
+
+SUBROUTINE PeakFlows(Q_serie, Qpeak)
+
+
+    IMPLICIT NONE
+
+ 	real*8, dimension(:),intent(in)                  :: Q_serie       	! River flow,    
+	real*8,dimension(:),allocatable, intent(out)     :: Qpeak       	! peak distribution discharge
+        integer                                          :: n_peak         ! Number of peaks
+        integer                                          :: jj, ii,kk, nn  ! counters
+
+
+n_peak=0
+
+!calculate the total mean of the high flows and count peaks
+
+do jj=2, size(Q_serie)-1
+	if( (Q_serie(jj-1) .le. Q_serie(jj)) .and. (Q_serie(jj+1) .le. Q_serie(jj)) ) then
+	n_peak=n_peak+1
+	end if
+end do
+
+allocate(Qpeak(n_peak))
+
+! find peaks
+kk=0
+do ii=2, size(Q_serie)-1
+	if( (Q_serie(ii-1) .le. Q_serie(ii)) .and. (Q_serie(ii+1) .le. Q_serie(ii)) ) then
+	kk=kk+1	
+	Qpeak(kk)=Q_serie(ii)
+	end if
+end do
+
+
+
+END SUBROUTINE PeakFlows
+
+
+
+
+end module mo_constraints

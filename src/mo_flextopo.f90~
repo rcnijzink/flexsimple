@@ -1,0 +1,864 @@
+MODULE mo_flextopo
+! Module that contains all the subroutines and functions that are part of the HBV model. The script is originally written by TUWIEN as a fixed format fortran script that can be used in R. It was modified and placed in a fortran framework to make adjustments and calibration runs possible. 
+
+!Written by: TUWIEN 2009
+!References: 
+!Adjustments: Free format fortran and clean-up of script. R.C. Nijzink june 2014
+
+
+
+IMPLICIT NONE
+
+CONTAINS
+
+      subroutine flextopo(param, incon, landscape_per, prec, airt, ep, dem, cellsize, output)
+
+USE mo_readdata
+
+      	integer 				:: tmax	! number of timesteps
+        real*8, dimension(:,:), allocatable, intent(in)     :: dem
+       	real*8, dimension(25), intent(in)	:: param	! model parameters
+      	real*8, dimension(9),intent(in)		:: incon	! initial conditions of states	
+	integer					:: maxparam	! maximum number of parameters
+	integer 				:: i		! counter
+	integer					:: irf		! counter lag function
+	integer 				:: it		! counter of timestep
+        real*8,intent(in)                       :: cellsize
+      	real*8,dimension(:), intent(in)		:: prec		! precipation series
+
+	real*8,dimension(:), intent(in)		:: airt		! temperature series
+	real*8,dimension(:), intent(in)		:: ep 		! evaporation series
+      	real*8,allocatable, dimension(:,:), intent(out)	:: output ! Output
+      	real*8 					:: csf		! Snow parameter
+	real*8 					:: ddf		! degree day factor
+
+	real*8 					:: tr 		! trheshold temperature rain
+
+	real*8 					:: ts		! threshold temperature snow
+ 	real*8 					:: meltt 	! melt temperature
+	real*8 					:: lprat 	! fraction of soil moisture for evap
+	real*8 					:: LP 		! soil moisture for evaporation
+	real*8 					:: bq		! adjusted base of lag function
+      	real*8 					:: temp		! temperature at timestep it
+	real*8 					:: Pdt  	! precipitation at timestep it
+
+
+
+     real*8					::  Meltfactor  
+     real*8					::  Tthresh
+     real*8					::  Imax_w   
+     real*8					::  Sumax_w   
+     real*8					::  beta_w     
+     real*8					::  Pmax_w      
+     real*8					::  Cmax_w      
+     real*8					::  Nlagf_w     
+     real*8					::  Kf_w       
+     real*8					::  Ks_w        
+     real*8					::  LP_w   
+     real*8					::  Imax_h      
+     real*8					::  Sumax_h     
+     real*8					::  beta_h      
+     real*8					::  Nlagf_h     
+     real*8					::  Nlags_h     
+     real*8					::  Kf_h        
+     real*8					::  LP_h        
+     real*8					::  D_h         
+     real*8					::  Imax_p     
+     real*8					::  Sumax_p     
+     real*8					::  beta_p      
+     real*8					::  Pmax_p      
+     real*8					::  Nlags_p     
+     real*8					::  LP_p        
+
+!local variables
+     real*8					:: Si_plateau 
+     real*8					:: Su_plateau  
+     real*8					:: Si_hillslope
+     real*8					:: Su_hillslope
+     real*8					:: Sf_hillslope
+     real*8					:: Si_wetland
+     real*8					:: Su_wetland
+     real*8					:: Sf_wetland
+     real*8					:: Ss
+
+      	real*8                  		:: Pedt_plateau	! precipation series
+      	real*8                  		:: Pedt_hillslope	! precipation series
+      	real*8                  		:: Pedt_wetland	! precipation series
+	real*8 					:: Rc_wetland        ! rain at timestep it
+	real*8 					:: Ru_plateau 	! rain at timestep it
+	real*8 					:: Ru_hillslope	! rain at timestep it
+	real*8 					:: Ru_wetland 	! rain at timestep it
+	real*8 					:: Rp_plateau 	! rain at timestep it
+	real*8 					:: Rp_wetland 	! rain at timestep it
+	real*8, dimension(:), allocatable      	:: Rs_plateau 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rs_lag_plateau 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rs_hillslope 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rs_lag_hillslope 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rf_hillslope 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rf_lag_hillslope 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rf_wetland 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Rf_lag_wetland 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Peff 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: SnowRest 	! rain at timestep it
+	real*8 					:: Kt 	        ! rain at timestep it
+	real*8 					:: Cr 	        ! rain at timestep it      
+	real*8, dimension(:), allocatable	:: Weights_p 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Weights_s_h 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Weights_f_h 	! rain at timestep it
+	real*8, dimension(:), allocatable	:: Weights_w 	! rain at timestep it
+	real*8 					:: Eidt_plateau ! degree day factor
+	real*8 					:: Eidt_hillslope ! degree day factor
+	real*8 					:: Eidt_wetland ! degree day factor
+	real*8 					:: Eadt_plateau	! degree day factor
+	real*8 					:: Eadt_hillslope	! degree day factor
+	real*8 					:: Eadt_wetland	! degree day factor
+	real*8 					:: Epdt 	! degree day factor
+	real*8 					:: Epdt_plateau	! degree day factor
+	real*8 					:: Epdt_hillslope	! degree day factor
+	real*8 					:: Flux_out	! sum of out
+	real*8 					:: Flux_out_p	! sum of out
+	real*8 					:: Flux_out_h	! sum of out
+	real*8 					:: Flux_out_w	! sum of out
+	real*8 					:: Flux_out_ss	! sum of out
+	real*8 					:: Flux_in	! sum of in
+	real*8 					:: Flux_in_p	! sum of in
+	real*8 					:: Flux_in_h	! sum of in
+	real*8 					:: Flux_in_w	! sum of in
+	real*8 					:: Flux_in_ss	! sum of in
+	real*8 					:: Lag_error	! sum of in
+	real*8 					:: Lag_error_p	! sum of in
+	real*8 					:: Lag_error_h	! sum of in
+	real*8 					:: Lag_error_w	! sum of in
+	real*8 					:: Storage_in	! storage t=1
+	real*8 					:: Storage_in_p	! storage t=1
+	real*8 					:: Storage_in_h	! storage t=1
+	real*8 					:: Storage_in_w	! storage t=1
+	real*8 					:: Storage_in_ss! storage t=1
+	real*8 					:: Storage_out	! storage last t
+	real*8 					:: Storage_out_p! storage last t
+	real*8 					:: Storage_out_h! storage last t
+	real*8 					:: Storage_out_w! storage last t
+	real*8 					:: Storage_out_ss! storage last t
+
+	real*8 					:: Epdt_wetland	! degree day factor
+	real*8 					:: Qf_hillslope	! degree day factor
+	real*8 					:: Qf_wetland	! degree day factor
+	real*8 					:: Qs	! degree day factor
+	real*8 					:: Qm	! degree day factor
+	real*8 					:: Qsum	! degree day factor
+	real*8 					:: WB	! water balance
+	real*8 					:: WB_p	! water balance plateau
+	real*8 					:: WB_h	! water balance hillslope
+	real*8 					:: WB_w	! water balance wetland
+	real*8 					:: WB_ss! water balance wetland
+	real*8 , dimension(3), intent(in)       :: Landscape_per	! percentages landscape classes
+	real*8 , dimension(3)       :: Landscape_per_new	! percentages landscape classes
+	real*8 					:: zero_dp	! degree day factor
+
+
+!Initialize model parameters
+
+tmax=size(prec)
+allocate( Rs_plateau( tmax) )
+allocate( Rs_lag_plateau( tmax) )
+allocate( Rs_hillslope( tmax) )
+allocate( Rs_lag_hillslope( tmax) )
+allocate( Rf_hillslope( tmax) )
+allocate( Rf_lag_hillslope( tmax) )
+allocate( Rf_wetland( tmax) )
+allocate( Rf_lag_wetland( tmax) )
+allocate( output(32,tmax) )
+
+
+      
+  Meltfactor  = param(1) 
+  Tthresh     = param(2)
+  
+  Imax_p      = param(3)
+  Sumax_p     = param(4)
+  beta_p      = param(5)
+  Pmax_p      = param(6)
+  Nlags_p     = param(7)
+  Lp_p        = param(8)
+ 
+  Imax_h      = param(9)
+  Sumax_h     = param(10)
+  beta_h      = param(11)
+  Nlagf_h     = param(12)
+  Nlags_h     = param(13)
+  Kf_h        = param(14)
+  LP_h        = param(15)
+  D_h         = param(16)
+  
+  Imax_w      = param(17)
+  Sumax_w     = param(18)
+  beta_w      = param(19)
+  Pmax_w      = param(20)
+  Nlagf_w     = param(21)
+  Kf_w        = param(22)
+  Ks_w        = param(23)
+  LP_w        = param(24)
+  Cmax_w      = param(25)
+
+
+
+
+!Initialize the states of the model
+
+
+  Si_plateau   = incon(1)
+  Su_plateau   = incon(2)
+  
+  Si_hillslope = incon(3)
+  Su_hillslope = incon(4)
+  Sf_hillslope = incon(5)
+
+  Si_wetland   = incon(6)
+  Su_wetland   = incon(7)
+  Sf_wetland   = incon(8)
+  Ss           = incon(9)
+
+
+  call Weighfun_triangle(Nlags_p, Weights_p)
+  call Weighfun_triangle(Nlags_h, Weights_s_h)
+  call Weighfun_triangle(Nlagf_h, Weights_f_h)
+  call Weighfun_triangle(Nlagf_w, Weights_w)
+
+
+
+
+  !call snow module
+   if(snow_flag .eqv. .TRUE.) then
+        call snowmod(airt, prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest) 
+   else 
+   Peff = prec
+   end if
+
+
+do it=1,tmax
+            Pdt =Peff(it)
+
+            temp=airt(it)
+
+            Epdt=ep(it)
+  
+      ! if (temp.lt.-0.1)then
+      ! Epdt=0.
+      ! endif
+
+       if(Pdt.lt.-998.00) then
+        output(1,it)=-999.99 
+        output(2,it)=-999.99
+        output(3,it)=-999.99
+        output(4,it)=-999.99
+        output(5,it)=-999.99
+        output(6,it)=-999.99
+       endif
+
+!---------------------------------------------------
+! plateau
+!---------------------------------------------------
+
+! Interception reservoir
+  Si_plateau=Si_plateau+Pdt
+  Pedt_plateau=maxval( (/zero_dp, (Si_plateau-Imax_p) /) )
+  Si_plateau=Si_plateau-Pedt_plateau
+  Eidt_plateau=minval( (/Epdt,Si_plateau/) )
+  Si_plateau=Si_plateau-Eidt_plateau
+    
+
+
+! Unsaturated reservoir
+
+  if(Pedt_plateau .gt. zero_dp) then
+    Cr=1/ (1+exp( (-Su_plateau/Sumax_p+0.5)/beta_p))
+    Ru_plateau=(1-Cr)*Pedt_plateau
+    Su_plateau=Su_plateau+Ru_plateau
+  else
+    Ru_plateau=0
+    Cr=1
+  end if
+
+
+
+! Transpiration
+  Epdt_plateau=maxval( (/zero_dp,Epdt-Eidt_plateau/) )
+  if(Su_plateau .lt. (Sumax_p*LP_p) ) then
+    Kt=Su_plateau/(Sumax_p*LP_p)
+  else 
+  Kt=1
+  end if
+  Eadt_plateau=Epdt_plateau*Kt
+  Eadt_plateau=minval( (/Eadt_plateau,Su_plateau/) )
+  Su_plateau=Su_plateau-Eadt_plateau
+
+
+! Percolation and capilary rise
+  Rp_plateau=(Su_plateau/Sumax_p)*Pmax_p
+  Rp_plateau=minval( (/Rp_plateau,Su_plateau/) )
+  Su_plateau=Su_plateau-Rp_plateau
+  
+
+
+! Recharge to slow reservoir
+  Rs_plateau(it)=Cr*Pedt_plateau
+
+if( (it-size(Weights_p)) .gt. zero_dp) then
+  Rs_lag_plateau(it)=sum(Rs_plateau(  (it-size(Weights_p)+1):it )*Weights_p(size(Weights_p):1:-1) )
+else
+  Rs_lag_plateau(it)=sum(Rs_plateau(1:it)*Weights_p(it:1:-1) )
+end if
+
+
+
+!---------------------------------------------------
+! hillslope 
+!---------------------------------------------------
+
+! Interception reservoir  
+
+  Si_hillslope=Si_hillslope+Pdt
+
+  Pedt_hillslope=maxval( (/zero_dp, (Si_hillslope-Imax_h) /) )
+
+  Si_hillslope=Si_hillslope-Pedt_hillslope
+
+  Eidt_hillslope=minval( (/Epdt,Si_hillslope/) )
+
+  Si_hillslope=Si_hillslope-Eidt_hillslope
+
+
+
+! Unsaturated reservoir
+  if(Pedt_hillslope .gt. zero_dp) then
+    Cr=1/(1+exp( (-Su_hillslope/Sumax_h+0.5)/beta_h) )
+    Ru_hillslope=(1-Cr)*Pedt_hillslope
+    Su_hillslope=Su_hillslope+Ru_hillslope
+    
+  else
+    Ru_hillslope=0
+    Cr=1
+  end if
+
+! Transpiration
+  Epdt_hillslope=maxval( (/zero_dp,Epdt-Eidt_hillslope/) )
+  if(Su_hillslope .lt. (Sumax_h*LP_h)) then
+    Kt=Su_hillslope/(Sumax_h*LP_h)
+  else
+  Kt=1
+  end if 
+  Eadt_hillslope=Epdt_hillslope*Kt
+  Eadt_hillslope=minval( (/Eadt_hillslope,Su_hillslope/) )
+  Su_hillslope=Su_hillslope-Eadt_hillslope
+  
+! Fast Reservoir
+  Rf_hillslope(it)=(1-D_h)*Cr*Pedt_hillslope
+
+if( (it-size(Weights_f_h)) .gt. zero_dp) then
+  Rf_lag_hillslope(it)=sum(Rf_hillslope( (it-size(Weights_f_h)+1):it)*Weights_f_h(size(Weights_f_h):1:-1) )
+else
+  Rf_lag_hillslope(it)=sum(Rf_hillslope(1:it)*Weights_f_h(it:1:-1) )
+end if 
+
+  Sf_hillslope   = Sf_hillslope + Rf_lag_hillslope(it)
+  Qf_hillslope   = Sf_hillslope/Kf_h
+  Qf_hillslope   = minval( (/Qf_hillslope, Sf_hillslope/) )
+  Sf_hillslope   = Sf_hillslope-Qf_hillslope
+
+! Recharge to slow reservoir
+  Rs_hillslope(it)=D_h*Cr*Pedt_hillslope
+
+if((it-size(Weights_s_h)) .gt. zero_dp) then
+  Rs_lag_hillslope(it)=sum( Rs_hillslope( (it-size(Weights_s_h)+1):it)*Weights_s_h(size(Weights_s_h):1:-1) )
+else
+  Rs_lag_hillslope(it)=sum(Rs_hillslope(1:it)*Weights_s_h(it:1:-1) )
+end if
+
+
+!---------------------------------------------------
+! wetland 
+!---------------------------------------------------
+
+! interception reservoir  
+  Si_wetland=Si_wetland+Pdt
+  Pedt_wetland=maxval( (/zero_dp,Si_wetland-Imax_w/) )
+  Si_wetland=Si_wetland-Pedt_wetland
+  Eidt_wetland=minval( (/Epdt,Si_wetland/) )
+  Si_wetland=Si_wetland-Eidt_wetland  
+  
+! Unsaturated reservoir
+
+  if(Pedt_wetland .gt. zero_dp) then
+    Cr=1/(1+exp((-Su_wetland/Sumax_w+0.5)/beta_w))
+    Ru_wetland=(1-Cr)*Pedt_wetland
+    Su_wetland=Su_wetland+Ru_wetland    
+  else
+    Ru_wetland=0
+    Cr=1
+  end if
+
+
+! Transpiration
+  Epdt_wetland=maxval( (/zero_dp ,Epdt-Eidt_wetland/) )
+  if(Su_wetland .lt. (Sumax_w*LP_w) ) then
+    Kt=Su_wetland/(Sumax_w*LP_w)
+  else
+  Kt=1
+  end if
+  Eadt_wetland=Epdt_wetland*Kt
+  Eadt_wetland=minval( (/Eadt_wetland,Su_wetland/) )
+  Su_wetland=Su_wetland-Eadt_wetland
+
+! Percolation and capilary rise
+  Rp_wetland=(Su_wetland/Sumax_w)*Pmax_w
+  Rp_wetland=minval( (/Rp_wetland,Su_wetland/) )
+  Su_wetland=Su_wetland-Rp_wetland
+  
+  Rc_wetland=(1-Su_wetland/Sumax_w)*Cmax_w
+
+  Rc_wetland=minval( (/Rc_wetland,Ss/Landscape_per(3)/) )
+  Su_wetland=Su_wetland+Rc_wetland
+
+
+! Fast Reservoir
+  Rf_wetland(it)=Cr*Pedt_wetland
+
+
+if((it-size(Weights_w)) .gt. zero_dp) then
+  Rf_lag_wetland(it)=sum(Rf_wetland( (it-size(Weights_w)+1):it ) * Weights_w( size(Weights_w):1:-1 ) )
+else
+  Rf_lag_wetland(it)=sum(Rf_wetland(1:it)*Weights_w(it:1:-1) )
+end if
+
+  Sf_wetland = Sf_wetland+Rf_lag_wetland(it)
+  Qf_wetland = Sf_wetland/Kf_w
+  Qf_wetland = minval( (/Qf_wetland, Sf_wetland/) )
+  Sf_wetland=Sf_wetland-Qf_wetland
+
+
+!---------------------------------------------------
+! Slow (shared) reservoir 
+!---------------------------------------------------
+
+  Ss = Ss  &
+       +(Rs_lag_plateau(it)+Rp_plateau)*Landscape_per(1) &
+       + Rs_lag_hillslope(it)*Landscape_per(2) &
+       + Rp_wetland*Landscape_per(3) &
+       - Rc_wetland*Landscape_per(3)
+  
+
+  !Qs = zero_dp
+  Qs = Ss/Ks_w 
+ 
+  Qs = minval( (/Qs,Ss/) )
+
+  Ss = Ss-Qs
+
+
+!---------------------------------------------------
+! Results
+!---------------------------------------------------
+
+ Qm = Qs + (Qf_hillslope*Landscape_per(2)) + (Qf_wetland*Landscape_per(3))
+
+
+
+ !write fluxes to output
+       output(1,it)  = Qm 
+       output(2,it)  = Qs
+       output(3,it)  = Qf_hillslope
+       output(4,it)  = Qf_wetland
+
+       output(5,it)  = Pedt_plateau
+       output(6,it)  = Pedt_hillslope
+       output(7,it)  = Pedt_wetland
+
+       output(8,it)  = Eadt_plateau
+       output(9,it)  = Eadt_hillslope
+       output(10,it) = Eadt_wetland
+
+       output(11,it) = Eidt_plateau
+       output(12,it) = Eidt_hillslope
+       output(13,it) = Eidt_wetland
+
+       output(14,it) = Ru_plateau
+       output(15,it) = Ru_hillslope
+       output(16,it) = Ru_wetland
+
+       output(17,it) = Rs_lag_plateau(it)
+       output(18,it) = Rs_lag_hillslope(it)
+
+       output(19,it) = Rp_plateau
+       output(20,it) = Rp_wetland
+
+       output(21,it) = Rc_wetland
+
+       output(22,it) = Rf_lag_hillslope(it)
+       output(23,it) = Rf_lag_wetland(it)
+
+!write states to output
+
+       output(24,it)=Si_plateau
+       output(25,it)=Si_hillslope
+       output(26,it)=Si_wetland
+       output(27,it)=Su_plateau
+       output(28,it)=Su_hillslope
+       output(29,it)=Su_wetland
+       output(30,it)=Sf_hillslope
+       output(31,it)=Sf_wetland
+       output(32,it)=Ss
+
+
+
+end do
+
+
+! check waterbalances
+
+
+!WB Plateau
+
+
+      Flux_out_p   =   sum(output(8,:))  +  &
+                       sum(output(11,:)) + &
+                       sum(output(17,:)) + &
+                       sum(output(19,:)) 
+
+      Flux_in_p    =  sum(Peff)
+
+      Storage_in_p =  incon(1)         + &
+                      incon(2)  
+
+      Storage_out_p= output(24,tmax)   + &
+                     output(27,tmax) 
+
+      Lag_error_p    = sum( output(17,:) ) - sum( Rs_plateau(:)   ) 
+ 
+
+      WB_p = Flux_in_p - Flux_out_p - (Storage_out_p-Storage_in_p) + Lag_error_p
+     
+
+!WB Hillslope
+
+      Flux_out_h   =   sum(output(3,:))  +  &
+                       sum(output(9,:)) + &
+                       sum(output(12,:)) + &
+                       sum(output(18,:)) 
+
+      Flux_in_h    =  sum(Peff)
+
+      Storage_in_h =  incon(3)         + &
+                      incon(4)         + &
+                      incon(5)
+
+      Storage_out_h= output(25,tmax)   + &
+                     output(28,tmax)   + &
+                     output(30,tmax) 
+
+      Lag_error_h  = sum( output(18,:) ) - sum( Rs_hillslope(:)   ) + &
+                     sum( output(22,:) ) - sum( Rf_hillslope(:)   )  
+ 
+
+      WB_h = Flux_in_h - Flux_out_h - (Storage_out_h-Storage_in_h) + Lag_error_h
+
+!WB Wetland
+
+      Flux_out_w   =  sum(output(4,:))  +  &
+                      sum(output(10,:)) + &
+                      sum(output(13,:)) + &
+                      sum(output(20,:)) 
+
+      Flux_in_w    =  sum(Peff)          + & 
+                      sum(output(21,:)) 
+
+      Storage_in_w =  incon(6)         + &
+                      incon(7)         + &
+                      incon(8)
+
+      Storage_out_w=  output(26,tmax)    + &
+                      output(29,tmax)   + &
+                      output(31,tmax) 
+
+      Lag_error_w  =  sum( output(23,:) ) - sum( Rf_wetland(:)   )   
+
+      WB_w = Flux_in_w - Flux_out_w - (Storage_out_w-Storage_in_w) + Lag_error_w
+
+!WB Slow reservoir
+
+      Flux_out_ss   = sum(output(2,:))  +  &
+                      sum(output(21,:)) * Landscape_per(3)
+
+      Flux_in_ss    =  sum(output(17,:))   * Landscape_per(1) + & 
+                       sum(output(18,:))   * Landscape_per(2) + & 
+                       sum(output(19,:))   * Landscape_per(1) + & 
+                       sum(output(20,:))   * Landscape_per(3) 
+
+      Storage_in_ss =  incon(9)  
+
+      Storage_out_ss=  output(32,tmax)    
+
+      WB_ss = Flux_in_ss - Flux_out_ss - (Storage_out_ss-Storage_in_ss) 
+
+!WB total
+
+      Flux_out   = sum(output(1,:)) +  &
+                   (sum(output(8,:))    * Landscape_per(1) )  + &
+                   (sum(output(9,:))    * Landscape_per(2) )  + &
+                   (sum(output(10,:))   * Landscape_per(3) )  + &
+                   (sum(output(11,:))   * Landscape_per(1) )  + &
+                   (sum(output(12,:))   * Landscape_per(2) )  + &
+                   sum(output(13,:))   * Landscape_per(3)   
+
+   
+      Flux_in    = sum(Peff)
+
+      Storage_in = incon(1)   * Landscape_per(1)   + &
+                   incon(2)   * Landscape_per(1)   + &
+                   incon(3)   * Landscape_per(2)   + &
+                   incon(4)   * Landscape_per(2)   + &
+                   incon(5)   * Landscape_per(2)   + &
+                   incon(6)   * Landscape_per(3)   + &
+                   incon(7)   * Landscape_per(3)   + &
+                   incon(8)   * Landscape_per(3)   + &
+                   incon(9)
+
+      Storage_out = (output(24,tmax)    * Landscape_per(1))   + &
+                    (output(25,tmax)    * Landscape_per(2))   + &
+                    (output(26,tmax)    * Landscape_per(3))   + &
+                    (output(27,tmax)    * Landscape_per(1))   + &
+                    (output(28,tmax)    * Landscape_per(2))   + &
+                    (output(29,tmax)    * Landscape_per(3))   + &
+                    (output(30,tmax)    * Landscape_per(2))   + &
+                    (output(31,tmax)    * Landscape_per(3))   + &
+                    output(32,tmax)
+
+      Lag_error   =  ( sum( output(17,:) ) - sum( Rs_plateau(:)   ) )  * Landscape_per(1)   + &
+                     ( sum( output(18,:) ) - sum( Rs_hillslope(:) ) )  * Landscape_per(2)   + &
+                     ( sum( output(22,:) ) - sum( Rf_hillslope(:) ) )  * Landscape_per(2)   + &
+                     ( sum( output(23,:) ) - sum( Rf_wetland(:)   ) )  * Landscape_per(3)   
+
+
+      WB       =  Flux_in - Flux_out - (Storage_out-Storage_in) + Lag_error
+
+
+
+!print *, output(24,tmax), &
+ !                   output(25,tmax),   &
+  !                  output(26,tmax),   &
+   !                 output(27,tmax),    &
+    !                output(28,tmax), &
+     !               output(29,tmax),     &
+      !              output(30,tmax),     &
+       !             output(31,tmax),     &
+        !            output(32,tmax)
+
+
+if( (WB .gt. 0.0001) .or. (WB .lt. -0.0001) ) then
+print *, "WARNING: waterbalance not closed"
+print *, "Waterbalance:                  " , WB
+if(WB_p .gt. 0.0001) print *, "Waterbalance Plateau :         " , WB_p
+if(WB_h .gt. 0.0001) print *, "Waterbalance Hillslope:        " , WB_h
+if(WB_w .gt. 0.0001) print *, "Waterbalance Wetland:          " , WB_w
+if(WB_ss .gt. 0.0001)print *, "Waterbalance Slow reservoir:   " , WB_ss
+end if
+
+
+
+
+
+
+
+
+
+
+      end subroutine flextopo
+
+!------------------------------------------------------------------------------------------------
+
+      subroutine weighfun_triangle(Tlag, Weights)
+
+       real*8, intent(in) 				:: Tlag
+       real*8, dimension(:), allocatable, intent(out)	:: Weights 
+       integer                                          :: i, j
+       integer                                          :: nlag
+
+
+nlag = ceiling(Tlag)
+
+allocate( Weights(nlag) )
+
+
+do j=1, nlag
+Weights(j) = real(j) / sum( (/    (i,i=1,nlag)   /) )
+end do
+
+
+      end subroutine weighfun_triangle
+
+
+!------------------------------------------------------------------------------------------------
+
+      subroutine snowmod(Temp, Prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest)
+
+use mo_readdata
+
+        real*8, dimension(:), intent(in)                    :: Temp
+        real*8, dimension(:), intent(in)                    :: Prec
+        real*8, dimension(:,:), intent(in)                  :: dem
+        real*8, intent(in)                                  :: Tthresh                             
+        real*8, intent(in)                                  :: Meltfactor                             
+        real*8, intent(in)                                  :: cellsize                             
+        integer                                             :: station_zone
+        real*8, dimension(:), allocatable                   :: CatElev
+        real*8, dimension(:), allocatable                   :: Area
+        real*8, dimension(:), allocatable                   :: Weights
+        real*8, dimension(:), allocatable                   :: h
+        real*8, dimension(:), allocatable                   :: Elevation
+        real*8                                              :: LapseRate 
+        real*8                                              :: MinElev
+        real*8                                              :: MaxElev
+        integer                                             :: i, j, n
+        integer                                             :: nElev
+        integer                                             :: Area_cat
+        real*8, dimension(:,:), allocatable                 :: SnowEq
+        real*8, dimension(:,:), allocatable                 :: Melt
+        real*8, dimension(:,:), allocatable                 :: TempMat
+        real*8, dimension(:,:), allocatable                 :: Pmat 
+        real*8, dimension(:), allocatable, intent(out)      :: Peff
+        real*8, dimension(:), allocatable, intent(out)      :: SnowRest
+
+
+
+LapseRate=-0.0064
+
+!determine weights and height zones
+
+!1D array of DEM
+Elevation = pack(dem, dem /= -9999)
+
+MinElev=minval((/Elevation,Elev_station/))
+MaxElev=maxval((/Elevation,Elev_station/))
+
+!number of zones, 100m elevation difference per zone
+nElev=(ceiling(MaxElev/100)-floor(MinElev/100))
+
+!find the zone where the meteostation is located
+if( Elev_station .gt. MinElev ) then
+station_zone=ceiling(Elev_station/100)-floor(MinElev/100)
+else
+station_zone = 1 
+end if
+
+!create elevation categories
+allocate( CatElev( nElev+1) )
+
+
+CatElev(1) = floor(MinElev/100)*100
+do i=2, nElev+1
+CatElev(i) = CatElev(i-1) + 100
+end do
+
+
+!determine the weights for each zone
+allocate( Area( nElev) )
+allocate( Weights( nElev) )
+
+do j=1, nElev
+Area(j)=0
+do i=1, size(Elevation)  
+  if( (Elevation(i) .gt. CatElev(j)) .and. (Elevation(i) .le. CatElev (j+1)) ) then
+  Area(j) = Area(j) + cellsize**2
+  end if
+end do
+end do
+
+Weights=Area/sum(Area)
+
+
+deallocate( Area )
+allocate( h( nElev) )
+h(:) = 0
+
+
+!determine relative height from meteo station
+do i=Station_zone, 1, -1
+  if(i==station_zone) then
+    h(i) = 0
+  else
+    h(i) = h(i+1) - 100
+  end if
+end do
+
+do j = (station_zone+1) , nElev
+      h(j)=h(j-1)+100
+end do
+
+
+ allocate( SnowEq( size(Temp),nElev  ) )
+ allocate( Melt(size(Temp),nElev ) )
+ allocate( TempMat( size(Temp),nElev ) )
+ allocate( Pmat(size(Temp),nElev ) )
+
+do n = 1, nElev
+TempMat(:,n) = Temp(:) + h(n)*LapseRate
+end do
+
+SnowEq(:,:) = 0
+Melt(:,:) = 0
+
+do j = 1, nElev
+  do i = 1, size(Temp)
+     if( TempMat(i,j) .lt. Tthresh) then
+        if(i .gt. 1) then
+               SnowEq(i,j) = Prec(i) + SnowEq(i-1,j)
+               Pmat(i,j) = 0
+        else
+               SnowEq(i,j) = Prec(i)
+               Pmat(i,j)=0
+        end if   
+      else
+        if(i .gt. 1) then
+               Melt(i,j)    = Meltfactor * (TempMat(i,j) - Tthresh)
+               Melt(i,j)    = minval( (/Melt(i,j) , SnowEq(i-1,j)/) )
+               SnowEq(i,j)  = SnowEq(i-1,j) - Melt(i,j)
+               Pmat(i,j)    = Prec(i)
+        else
+               SnowEq(i,j)  = 0
+               Pmat(i,j)    = Prec(i)
+        end if
+      end if
+  end do
+end do
+
+
+
+
+allocate( Peff     (size(temp) ))
+allocate( SnowRest (size(temp) ))
+
+Peff(:)      = 0
+SnowRest(:)  = 0
+
+do i = 1, nElev
+Peff(:)        = Peff(:) + Pmat(:,i) * Weights(i) + Melt(:,i) * Weights(i)
+SnowRest(:)    = SnowRest(:) + SnowEq(:,i) * Weights(i)
+end do
+
+
+
+
+
+ deallocate( SnowEq )
+ deallocate( Melt )
+ deallocate( TempMat )
+ deallocate( Pmat )
+
+
+
+
+
+
+
+      end subroutine snowmod
+
+END MODULE mo_flextopo

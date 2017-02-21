@@ -1,0 +1,437 @@
+!> \file mo_landscape_classes.f90
+
+!> \brief Module with calculations for several hydrological signatures.
+
+!> \details This module contains calculations for hydrological signatures.
+!> It contains:\n
+!> Mean annual runoff
+!> Autocorrelation
+!> Autocorrelation for low flows
+!> Autocorrelation for high flows
+!> Rising and declining lomb densities
+!> Flow duration curves
+!> Flow duration curves low flows
+!> Flow duration curves high flows
+!> Peak distribution parameter
+!> Peaks for low flows
+!> Peaks for high flows
+
+!> \authors Remko Nijzink,
+!> \date March 2014
+
+MODULE mo_landscape_classes
+
+  ! Module with calculations for several hydrological signatures.
+
+  ! Written  Remko Nijzink, March 2014
+  
+  ! Always use the number precisions of mo_kind
+  ! All USE statemnets have the only clause
+
+
+  IMPLICIT NONE
+
+
+
+  ! ------------------------------------------------------------------
+
+CONTAINS
+
+  ! ------------------------------------------------------------------
+ !     NAME
+  !         Q_MeanAnnual
+
+  !     PURPOSE
+  !>        \brief The mean annual runoff
+
+  !>        \details Calculates the mean annual runoff
+  
+  !     CALLING SEQUENCE
+  !         call Q_Meannual(Q_serie,Q_MA)
+
+  !     INTENT(IN)
+  !>        \param(in) "real*8, dimension(:) :: Q_serie"        ! Discharge series
+
+  !     INTENT(INOUT)
+  !         None
+
+  !     INTENT(OUT)
+  !         \param(out) "real*8 :: Q_MA"        Mean annual runoff
+
+  !     INTENT(IN), OPTIONAL
+  !         None
+
+  !     INTENT(INOUT), OPTIONAL
+  !         None
+
+  !     INTENT(OUT), OPTIONAL
+  !         None
+
+  !     RETURN
+  !>        None
+
+  !     RESTRICTIONS
+  !         None
+
+  !     EXAMPLE
+ 
+  !     LITERATURE
+  !         None
+
+  !     HISTORY
+  !>        \author Remko Nijzink
+  !>        \date March 2014
+
+ 
+SUBROUTINE landscape_classes(dem, slope, fdir, facc, nRows, nCols, Area_thresh, Slope_thresh, Hand_thresh, &
+                             nodata, cellsize, xllcorner, yllcorner, Landscape_per)
+
+USE mo_readdata
+
+    IMPLICIT NONE
+
+        real*8, dimension(:,:), allocatable    :: hand
+        real*8, dimension(:,:) , intent(in)    :: dem
+        real*8, dimension(:,:), intent(in)     :: slope
+        integer, dimension(:,:), intent(in)    :: fdir
+        integer, dimension(:,:), intent(in)    :: facc
+        real*8, intent(in)                     :: cellsize
+        real*8, intent(in)                     :: Area_thresh
+        real*8, intent(in)                     :: nodata
+        real*8, intent(in)                     :: xllcorner
+        real*8, intent(in)                     :: yllcorner
+        integer, intent(in)                    :: nRows, nCols
+        integer                                :: iStart0, iEnd0
+        integer                                :: nCells0
+        integer                                :: i, j, pcount, hcount, wcount
+	real*8 , dimension(3), intent(out)     :: landscape_per	! landscape percentages
+        logical, dimension(:,:), allocatable   :: mask_p, mask_h, mask_w, mask
+        integer, dimension(:,:), allocatable   :: classes
+        real*8, intent(in)                     :: Slope_thresh, Hand_thresh
+        integer                                :: umap2
+        integer                                :: utable3
+
+
+
+allocate( mask_p( nRows, nCols ) )
+allocate( mask_h( nRows, nCols ) )
+allocate( mask_w( nRows, nCols ) )
+allocate( mask  ( nRows, nCols ) )
+allocate( classes  ( nRows, nCols ) )
+
+mask= .TRUE.
+
+    where ( dem .eq. nodata)
+       mask = .false.
+    end where
+
+
+
+call handgenerator( dem, fdir, facc, nRows, nCols, Area_thresh, nodata, cellsize, xllcorner, yllcorner, hand)
+
+pcount = 0
+hcount = 0
+wcount = 0
+
+
+
+do i=1, nRows
+  do j=1, nCols
+   if(mask(i,j) .eqv. .TRUE.) then
+     if( (slope(i,j) .lt. Slope_thresh) .and. (slope(i,j) .ne. nodata) .and. (hand(i,j) .gt. Hand_thresh) ) then
+       mask_p(i,j) = .TRUE.
+       pcount = pcount + 1.0
+       classes(i,j) = 1
+     end if
+     if( (slope(i,j) .gt. Slope_thresh)  ) then
+       mask_h(i,j) = .TRUE.
+       hcount = hcount + 1.0
+       classes(i,j) = 2
+     end if
+     if( (slope(i,j) .lt. Slope_thresh) .and. (slope(i,j) .ne. nodata) .and. (hand(i,j) .le. Hand_thresh) &
+     .and. (hand(i,j) .ne. nodata)   ) then
+
+       mask_w(i,j) = .TRUE.
+       wcount = wcount + 1.0
+       classes(i,j) = 1
+     end if
+   else
+    classes(i,j) = int(nodata)
+   end if  
+
+ end do
+end do
+
+landscape_per(1) = real(pcount,8) / real( pcount+hcount+wcount,8 )
+landscape_per(2) = real(hcount,8) / real( pcount+hcount+wcount,8 )
+landscape_per(3) = real(wcount,8) / real( pcount+hcount+wcount,8 )
+
+
+
+        landscape_per(1) = landscape_per(1) / ( sum(landscape_per ) )
+        landscape_per(2) = landscape_per(2) / ( sum(landscape_per ) )
+        landscape_per(3)   = landscape_per(3)  / ( sum(landscape_per ) )
+
+
+print *, "   Landscapes:"
+print *, ""
+write(*,'(A15, F5.1, A1)')  "     Plateau:    " , landscape_per(1)*100,  "%"
+write(*,'(A15, F5.1, A1)')  "     Hillslope:    " , landscape_per(2)*100,  "%"
+write(*,'(A15, F5.1, A1)')  "     Wetland:    " , landscape_per(3)*100,  "%"
+   
+
+
+    ! write map
+    umap2 = 2
+    open (unit=umap2, file=trim(adjustl(output_dir)) // trim(adjustl("Landscape_classes.txt"))  , action='write')
+    ! (a) write header
+
+    write (umap2, '(A5, 10X, I9)') "nCols    ", nCols
+    write (umap2, '(A5, 10X, I9)') "nRows    ", nRows
+    write (umap2, '(A9, 6X, F9.1)') "xllcorner", xllcorner
+    write (umap2, '(A9, 6X, F9.1)') "yllcorner", yllcorner
+    write (umap2, '(A8, 7X, F9.1)') "cellsize ", cellsize
+    write (umap2, '(A12,2X, I10)') "NODATA_value   ", int(nodata)
+
+    ! (b) read data
+    do i=1,nRows
+       write(umap2, '(1000(I5, 1X))') classes(i,:)
+    end do
+    close(umap2)
+
+    ! write table
+    utable3 = 3
+    open (unit=utable3, file=trim(adjustl(output_dir)) // trim(adjustl("Landscape_classes_table.txt"))  , action='write')
+
+    write (utable3, '(A1, 2X, A9, 2X, F5.1, A1)')   "1", "Plateau", landscape_per(1)*100,  "%"
+    write (utable3, '(A1, 2X, A9, 2X, F5.1, A1)')   "2", "Hillslope", landscape_per(2)*100,  "%"
+    write (utable3, '(A1, 2X, A9, 2X, F5.1, A1)')  "3", "Wetland", landscape_per(3)*100,  "%"
+  
+    close(utable3)
+
+
+
+
+END SUBROUTINE landscape_classes
+
+!-------------------------------------------------------------------------------
+ !     NAME
+  !         handgenerator
+
+  !     PURPOSE
+  !>        \brief Calculates autocorrelation
+
+  !>        \details Calculates autocorrelation serie with lag times to 200 timesteps
+  
+  !     CALLING SEQUENCE
+  !         call Autocorrelation(Q_serie,Q_MA)
+
+  !     INTENT(IN)
+  !>        \param(in) "real*8, dimension(:) :: Q_serie"        ! Discharge series
+
+  !     INTENT(INOUT)
+  !         None
+
+  !     INTENT(OUT)
+  !         \param(out) "real*8, dimension(:) :: AC"        Autocorrelation function
+
+  !     INTENT(IN), OPTIONAL
+  !         None
+
+  !     INTENT(INOUT), OPTIONAL
+  !         None
+
+  !     INTENT(OUT), OPTIONAL
+  !         None
+
+  !     RETURN
+  !>        None
+
+  !     RESTRICTIONS
+  !         None
+
+  !     EXAMPLE
+ 
+  !     LITERATURE
+  !         None
+
+  !     HISTORY
+  !>        \author Remko Nijzink
+  !>        \date March 2014
+
+SUBROUTINE handgenerator( dem, fdir, facc, nRows, nCols, Area_thresh, nodata, cellsize, xllcorner, yllcorner, hand)
+                          
+USE mo_readdata
+
+    IMPLICIT NONE
+
+
+
+!        integer, intent(in)                   :: iBasin
+	integer                                                 :: i,j	      ! Counters
+        integer                                                 :: n,k,l      ! direction variables
+        real*8                                                  :: d          ! temporay distance from drain
+        real*8, dimension(:,:), allocatable, intent(out)        :: hand       ! heigt above nearest drainage
+        real*8, intent(in), dimension(:,:)                      :: dem        ! digital evelation model
+        real*8, dimension(:,:), allocatable                     :: dist       ! distance from drain
+        integer, intent(in), dimension(:,:)                     :: fdir       ! flow direction map
+        integer, intent(in), dimension(:,:)                     :: facc       ! flow accumulation map
+        integer, intent(in)                                     :: nRows      ! number of rows 
+        integer, intent(in)                                     :: nCols      ! number of columns
+        real*8, intent(in)                                      :: nodata     ! nodata value
+        real*8, intent(in)                                      :: xllcorner  ! west corner
+        real*8, intent(in)                                      :: yllcorner  ! north corner
+        real*8, intent(in)                                      :: Area_thresh! area for drain definition
+        real*8, intent(in)                                      :: cellsize   ! size of cell
+        logical, dimension(:,:), allocatable                    :: mask       ! mask for basin
+        integer                                                 :: umap1      ! file unit for HANDmap
+
+
+
+print *, ""
+print*, "   Generating HAND..."
+print *, ""
+
+ !  call get_basin_info (iBasin, 0, nRows, nCols, ncells=nCells0,   &
+  !       iStart=iStart0, iEnd=iEnd0, mask=mask0) 
+
+allocate( hand( nRows, nCols ) )
+allocate( dist( nRows, nCols ) )
+allocate( mask( nRows, nCols ) )
+
+mask= .TRUE.
+
+    where ( dem .eq. nodata)
+       mask = .false.
+    end where
+
+
+
+do j = 1, nCols
+  do i = 1, nRows
+
+    if( mask(i,j) .eqv. .FALSE.) then
+    hand(i,j) = nodata
+    end if
+    if( (mask(i,j) .eqv. .TRUE.) .and. (facc(i,j) .ge. Area_thresh) ) then
+    hand(i,j)=0
+    end if         
+    if( (mask(i,j) .eqv. .TRUE.) .and. (facc(i,j) .lt. Area_thresh)) then
+    n=0
+    d=0.0
+    k=i
+    l=j
+     	do while(n .eq. 0) 
+	     if( (n .eq. 0) .and. (fdir(k,l) .eq. 1) ) then
+	      d=d+sqrt(cellsize**2)
+	      l=l+1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 2) ) then
+	      d=d+2*sqrt(cellsize**2)
+	      l=l+1
+	      k=k+1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 4) ) then
+	      d=d+sqrt(cellsize**2)
+	      k=k+1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 8) ) then
+	      d=d+2*sqrt(cellsize**2)
+	      l=l-1
+	      k=k+1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 16) ) then
+	      d=d+sqrt(cellsize**2)
+	      l=l-1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 32) ) then
+	      d=d+2*sqrt(cellsize**2)
+	      l=l-1
+	      k=k-1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 64) ) then
+	      d=d+sqrt(cellsize**2)
+	      k=k-1
+	      n=1
+	      end if
+
+	      if( (n .eq. 0) .and. (fdir(k,l) .eq. 128) ) then
+	      d=d+2*sqrt(cellsize**2)
+	      k=k-1
+	      l=l+1
+	      n=1
+	      end if
+
+	      if(facc(k,l) .ge. Area_thresh) then
+	      hand(i,j)=dem(i,j)-dem(k,l)
+              if( hand(i,j) .lt. 0 ) then 
+        !      print *, "WARNING: negative HAND; check flowdirection and flow accumulation maps"
+              end if
+	      dist(i,j)=d
+	      n=-1
+	      end if
+
+	      if(facc(k,l) .lt. Area_thresh .and. facc(k,l) .ne. nodata) then
+	      n=0
+	      end if
+     	end do     
+    end if
+
+  end do
+end do
+
+
+
+! writing hand-map
+    umap1 = 1
+    open (unit=umap1, file=trim(adjustl(output_dir)) // trim(adjustl("HAND.txt"))  , action='write')
+    ! (a) write header
+
+    write (umap1, '(A5, 10X, I9)') "nCols    ", nCols
+    write (umap1, '(A5, 10X, I9)') "nRows    ", nRows
+    write (umap1, '(A9, 6X, F9.1)') "xllcorner", xllcorner
+    write (umap1, '(A9, 6X, F9.1)') "yllcorner", yllcorner
+    write (umap1, '(A8, 7X, F9.1)') "cellsize ", cellsize
+    write (umap1, '(A12,2X, F10.4)') "NODATA_value   ", nodata
+
+    ! (b) read data
+    do i=1,nRows
+       write(umap1, '(1000(F10.4, 1X))') hand(i,:)
+    end do
+    close(umap1)
+
+
+
+
+
+
+
+
+
+END SUBROUTINE handgenerator
+
+
+
+
+
+
+
+
+
+
+
+
+
+END MODULE mo_landscape_classes
