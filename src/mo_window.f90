@@ -232,12 +232,12 @@ do iWindow =1, nWindow
 
 
 
-           write(uParam+iwindow,'(14(1X a8))'),  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+           write(uParam+iwindow,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
                               "Kf", "Ks", "LP", "D", "Pmax", "alpha","a", "b", "sumax_min"
 
 
-           write(uObj+iWindow,formHeader), 'NSE','LNSE','VE', 'KGE', 'LKGE', 'WB'
-           write(uSig+iWindow,formHeaderSig), 'RC','VarRatio','SFDC','HPC','Q90Q50','SPDC', 'BFI','RLD','DLD'
+           write(uObj+iWindow,formHeader) 'NSE','LNSE','VE', 'KGE', 'LKGE', 'WB'
+           write(uSig+iWindow,formHeaderSig) 'RC','VarRatio','SFDC','HPC','Q90Q50','SPDC', 'BFI','RLD','DLD'
 
 end do
 
@@ -358,8 +358,8 @@ end do
 
 
 
-           write(uParam+iwindow,'(14(1X f8.2))'),  paramset         
-           write(uQ+iwindow,*),  output(1,start_ind:end_ind)
+           write(uParam+iwindow,'(14(1X f8.2))')  paramset         
+           write(uQ+iwindow,*)  output(1,start_ind:end_ind)
            write(uObj+iwindow,formDataObj) (/NSE, LNSE, VE, KGE, LKGE, WB/)
 !           write(uEa+iWindow,*) output(5,start_ind:end_ind)
            write(uSig+iwindow,formDataSig) (/RC, VR, SFDC, HPC,LFR, SPDC, BFI, RLD, DLD/)

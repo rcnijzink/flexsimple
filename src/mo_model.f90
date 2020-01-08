@@ -122,7 +122,7 @@ Pr = zero_dp
 
   !call snow module
    if(snow_flag .eqv. .TRUE.) then
-        call snowmod(airt, prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest, .TRUE.) 
+        call snowmod(airt, prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest, .FALSE.) 
     else 
    Peff = prec
    end if
@@ -130,7 +130,7 @@ Pr = zero_dp
 dt =1_8
 
 do it=1,tmax
-       
+
        Pdt =Peff(it)
        temp=airt(it)
        Epdt=ep(it)
@@ -238,7 +238,6 @@ do it=1,tmax
   Ss = Ss - Qs
 
 
-
 !  Ss_in = Ss + Rs(it) + Pr
 !   Ss = (Ss_in*exp(- 1_8/Ks)) - (  (L*Ks) * ( 1_8-exp(- 1_8/Ks) ) )
 
@@ -276,7 +275,9 @@ do it=1,tmax
        output(9,it)=Su
        output(10,it)=Sf
        output(11,it)=Ss
-       output(12,it)=SnowRest(it)
+       if(snow_flag .eqv. .TRUE.) then
+          output(12,it)=SnowRest(it)
+       end if
 
 end do
 

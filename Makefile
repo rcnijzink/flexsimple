@@ -11,7 +11,7 @@
 PROGRAM  = flexsimple
 
 
-FC      := /usr/bin/gfortran-4.6 #compiler name and directory
+FC      := /usr/bin/gfortran #compiler name and directory
 #FC      := /usr/bin/x86_64-w64-mingw32-gfortran #64bit
 
 
@@ -39,7 +39,7 @@ MSRC = *.mod
 all: $(PROGRAM) 
 		
 $(PROGRAM): $(SRC) 
-	$(FC) -o $@ $^ ;mv $(MSRC) $(OBJ_PATH)
+	$(FC) -o $@ $^ ;rm $(MSRC) #$(OBJ_PATH)
 #	$(FC) -o $@ $^ -I${NFDIR}/include -L${NFDIR}/lib  -static ;mv $(MSRC) $(OBJ_PATH)
 %.o: %.f
 	$(FC) -o $@ $<

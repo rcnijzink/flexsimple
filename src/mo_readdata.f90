@@ -503,7 +503,7 @@ sumax_serie( (i_change_end+1) :size(sumax_serie) )=  ((sumax - sumax_min) * (1-e
  open(160, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Imax_serie.txt")), status='unknown', action='write')
 
  do j=1, size(sumax_serie)
-        write(160,*),  sumax_serie(j)
+        write(160,*)  sumax_serie(j)
 
  end do 
 
@@ -514,16 +514,6 @@ sumax_serie( (i_change_end+1) :size(sumax_serie) )=  ((sumax - sumax_min) * (1-e
 
 
 end subroutine
-
-
-
-
-
-
-
-
-
-
 
 
 

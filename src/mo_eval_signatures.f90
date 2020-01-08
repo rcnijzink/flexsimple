@@ -221,42 +221,42 @@ fName=  trim(adjustl(Input_dir))//trim("Signatures.txt")
  write(formDataF, *) '(2X,   a10 , 2X,  f10.2, 2X,  f10.2, 2X, f10.2,  a10    )'
  write(formDataNS, *) '(2X,   a10 , 2X,  a10, 2X,  a10, 2X, a10, f10.2    )'
 
- write(usignatures,formHeader), 'Signature ', 'Obs ', 'Mod ', 'Rel.Err(-)','NSE(-)'
+ write(usignatures,formHeader) 'Signature ', 'Obs ', 'Mod ', 'Rel.Err(-)','NSE(-)'
 
- write(usignatures,formDataF), 'Q_MA', Qobs_MA, Q_MA, EC(1),'-'
- write(usignatures,formDataF), 'AC', ACobs(1), AC(1), EC(2),'-'
- write(usignatures,formDataF), 'AC_low', ACobs_low, AC_low, EC(3),'-'
- write(usignatures,formDataF), 'AC_high', ACobs_high, AC_high, EC(4),'-'
- write(usignatures,formDataF), 'RLD', RLDobs, RLD, EC(5),'-'
- write(usignatures,formDataF), 'DLD', DLDobs, DLD, EC(6),'-'
+ write(usignatures,formDataF) 'Q_MA', Qobs_MA, Q_MA, EC(1),'-'
+ write(usignatures,formDataF) 'AC', ACobs(1), AC(1), EC(2),'-'
+ write(usignatures,formDataF) 'AC_low', ACobs_low, AC_low, EC(3),'-'
+ write(usignatures,formDataF) 'AC_high', ACobs_high, AC_high, EC(4),'-'
+ write(usignatures,formDataF) 'RLD', RLDobs, RLD, EC(5),'-'
+ write(usignatures,formDataF) 'DLD', DLDobs, DLD, EC(6),'-'
 
- write(usignatures,formDataF), 'Q5', Qobs5, Q5, EC(7),'-'
- write(usignatures,formDataF), 'Q50', Qobs50, Q50, EC(8),'-'
- write(usignatures,formDataF), 'Q95', Qobs95, Q95, EC(9),'-'
+ write(usignatures,formDataF) 'Q5', Qobs5, Q5, EC(7),'-'
+ write(usignatures,formDataF) 'Q50', Qobs50, Q50, EC(8),'-'
+ write(usignatures,formDataF) 'Q95', Qobs95, Q95, EC(9),'-'
 
- write(usignatures,formDataF), 'Q5_low', Qlow_obs5, Qlow5, EC(10),'-'
- write(usignatures,formDataF), 'Q50_low', Qlow_obs50, Qlow50, EC(11),'-'
- write(usignatures,formDataF), 'Q95_low', Qlow_obs95, Qlow95, EC(12),'-'
+ write(usignatures,formDataF) 'Q5_low', Qlow_obs5, Qlow5, EC(10),'-'
+ write(usignatures,formDataF) 'Q50_low', Qlow_obs50, Qlow50, EC(11),'-'
+ write(usignatures,formDataF) 'Q95_low', Qlow_obs95, Qlow95, EC(12),'-'
 
- write(usignatures,formDataF), 'Q5_high', Qhigh_obs5, Qhigh5, EC(13),'-'
- write(usignatures,formDataF), 'Q50_high', Qhigh_obs50, Qhigh50, EC(14),'-'
- write(usignatures,formDataF), 'Q95_high', Qhigh_obs95, Qhigh95, EC(15),'-'
+ write(usignatures,formDataF) 'Q5_high', Qhigh_obs5, Qhigh5, EC(13),'-'
+ write(usignatures,formDataF) 'Q50_high', Qhigh_obs50, Qhigh50, EC(14),'-'
+ write(usignatures,formDataF) 'Q95_high', Qhigh_obs95, Qhigh95, EC(15),'-'
 
- write(usignatures,formDataF), 'Peaks', peaksobs, peaks, EC(16),'-'
- write(usignatures,formDataF), 'Peaks_low', peaksobs_low, peaks_low, EC(17),'-'
- write(usignatures,formDataF), 'Peaks_high', peaksobs_high, peaks_high, EC(18),'-'
+ write(usignatures,formDataF) 'Peaks', peaksobs, peaks, EC(16),'-'
+ write(usignatures,formDataF) 'Peaks_low', peaksobs_low, peaks_low, EC(17),'-'
+ write(usignatures,formDataF) 'Peaks_high', peaksobs_high, peaks_high, EC(18),'-'
 
- write(usignatures,formDataF), 'Qpeak10', Qpeak10_obs, Qpeak10, EC(19),'-'
- write(usignatures,formDataF), 'Qpeak50', Qpeak50_obs, Qpeak50, EC(20),'-'
+ write(usignatures,formDataF) 'Qpeak10', Qpeak10_obs, Qpeak10, EC(19),'-'
+ write(usignatures,formDataF) 'Qpeak50', Qpeak50_obs, Qpeak50, EC(20),'-'
 
- write(usignatures,formDataF), 'Qlow_peak10', Qlowpeak10_obs, Qlowpeak10, EC(21),'-'
- write(usignatures,formDataF), 'Qlow_peak50', Qlowpeak50_obs, Qlowpeak50, EC(22),'-'
+ write(usignatures,formDataF) 'Qlow_peak10', Qlowpeak10_obs, Qlowpeak10, EC(21),'-'
+ write(usignatures,formDataF) 'Qlow_peak50', Qlowpeak50_obs, Qlowpeak50, EC(22),'-'
 
- write(usignatures,formDataF), 'Qhigh_peak10', Qhighpeak10_obs, Qhighpeak10, EC(23),'-'
- write(usignatures,formDataF), 'Qhigh_peak50', Qhighpeak50_obs, Qhighpeak50, EC(24),'-'
+ write(usignatures,formDataF) 'Qhigh_peak10', Qhighpeak10_obs, Qhighpeak10, EC(23),'-'
+ write(usignatures,formDataF) 'Qhigh_peak50', Qhighpeak50_obs, Qhighpeak50, EC(24),'-'
 
- write(usignatures,formDataNS), 'FDC_serie', '-', '-', '-',EC(25)
- write(usignatures,formDataNS), 'AC_serie', '-', '-', '-',EC(26)
+ write(usignatures,formDataNS) 'FDC_serie', '-', '-', '-',EC(25)
+ write(usignatures,formDataNS) 'AC_serie', '-', '-', '-',EC(26)
  close(usignatures)
 
 fName=  trim(adjustl(input_dir))//trim("FDC.txt")
@@ -265,11 +265,11 @@ fName=  trim(adjustl(input_dir))//trim("FDC.txt")
  write(formDataFDC, *) '(2X,   f10.2 , 2X,   f10.2, 2X, a2, 2X, f10.2, 2X,  f10.2)'
 
 
- write(uFDC,formHeaderFDC), 'Observed','','|','', 'Modelled'
- write(uFDC,formHeaderFDC), 'Percentage(%) ', 'Q(m3/s)','|', 'Percentage(%) ', 'Q(m3/s)'
+ write(uFDC,formHeaderFDC) 'Observed','','|','', 'Modelled'
+ write(uFDC,formHeaderFDC) 'Percentage(%) ', 'Q(m3/s)','|', 'Percentage(%) ', 'Q(m3/s)'
 
 do jj=1, size(FDCobs(:,1)) 
-write(uFDC,formDataFDC), FDCobs(jj,1), FDCobs(jj,2), '|', FDC(jj,1), FDC(jj,2)
+write(uFDC,formDataFDC) FDCobs(jj,1), FDCobs(jj,2), '|', FDC(jj,1), FDC(jj,2)
 end do 
  close(uFDC)
 
@@ -280,11 +280,11 @@ fName=  trim(adjustl(input_dir))//trim("AC.txt")
  write(formDataAC, *) '(2X,   i10 , 2X,  f10.2, 2X, a2, 2X, i10, 2X,  f10.2)'
 
 
- write(uAC,formHeaderAC), 'Observed','','|','', 'Modelled'
- write(uAC,formHeaderAC), 'Tlag(days) ', 'AC(-)','|', 'Tlag(days) ', 'AC(-)'
+ write(uAC,formHeaderAC) 'Observed','','|','', 'Modelled'
+ write(uAC,formHeaderAC) 'Tlag(days) ', 'AC(-)','|', 'Tlag(days) ', 'AC(-)'
 
 do jj=1,200 
-write(uAC,formDataAC), jj, ACobs(jj), '|', jj, AC(jj)
+write(uAC,formDataAC) jj, ACobs(jj), '|', jj, AC(jj)
 end do
  close(uac)
 

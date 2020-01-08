@@ -84,7 +84,7 @@ fileunit=1
 
 open(fileunit, file=trim(adjustl(output_dir)) // trim(fluxes_states_names(i)), status='unknown', action='write')
 	do jj=1, size(output(1,:)) 
-  	write(fileunit,'((f6.2))'), output(i,jj)
+  	write(fileunit,'((f6.2))') output(i,jj)
 	end do
  close(fileunit)
 

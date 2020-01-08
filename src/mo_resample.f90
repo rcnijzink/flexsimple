@@ -220,22 +220,22 @@ open(uQ, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Q.txt")), status='u
 open(uFinalStates, file=trim(adjustl(output_dir_cal)) // trim(adjustl("FinalStates.txt")), status='unknown', action='write')
 open(uObj, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
 
-write(uParam,'(14(1X a8))'),  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+write(uParam,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
                               "Kf", "Ks", "LP", "D", "Pmax","alpha","a","b", "sumax_min"
 
 write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10, 2X a10)'
 write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
 
-write(uObj,formHeader), 'NSE','LNSE','VE','KGE', 'LKGE'
+write(uObj,formHeader) 'NSE','LNSE','VE','KGE', 'LKGE'
 
 
 do i=1, Iterations
 
         count_solutions   = count_solutions+1
-        write(uObj,formDataObj),  obj_mat(1:5,i)
-        write(uParam,'(14(1X f10.2))'),  par_mat(:,i)
-        write(uQ,'(100000(1X f6.2))'),  Q_mat(:,i)
-        write(uFinalStates,*), incon_mat(:,i)
+        write(uObj,formDataObj)  obj_mat(1:5,i)
+        write(uParam,'(14(1X f10.2))')  par_mat(:,i)
+        write(uQ,'(100000(1X f6.2))')  Q_mat(:,i)
+        write(uFinalStates,*) incon_mat(:,i)
 
 end do
 
@@ -284,11 +284,11 @@ allocate( objval_mat( 5, Iterations) )
 !headers
 write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10, 2X a10)'
 write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
-write(uObjval,formHeader), 'NSE','LNSE','VE','KGE' , 'LKGE'
-write(uSig,'(28(A12))'), 'Q_MA', 'AC', 'AC_low', 'AC_high', 'RLD', 'DLD', 'Q5', 'Q50', 'Q95', 'Q5_low', 'Q50_low', 'Q95_low', &
+write(uObjval,formHeader) 'NSE','LNSE','VE','KGE' , 'LKGE'
+write(uSig,'(28(A12))') 'Q_MA', 'AC', 'AC_low', 'AC_high', 'RLD', 'DLD', 'Q5', 'Q50', 'Q95', 'Q5_low', 'Q50_low', 'Q95_low', &
                         'Q5_high', 'Q50_high', 'Q95_high', 'Peaks', 'Peaks_low', 'Peaks_high', 'Qpeak10','Qpeak50', &
                         'Qlow_peak10', 'Qlow_peak50','Qhigh_peak10', 'Qhigh_peak50', 'SFDC', 'LFR', 'FDC_serie', 'AC_serie'
-write(uSigVal,'(28(A12))'), 'Q_MA', 'AC', 'AC_low', 'AC_high', 'RLD', 'DLD', 'Q5', 'Q50', 'Q95', 'Q5_low', 'Q50_low', 'Q95_low',&
+write(uSigVal,'(28(A12))') 'Q_MA', 'AC', 'AC_low', 'AC_high', 'RLD', 'DLD', 'Q5', 'Q50', 'Q95', 'Q5_low', 'Q50_low', 'Q95_low',&
                            'Q5_high','Q50_high', 'Q95_high', 'Peaks', 'Peaks_low', 'Peaks_high', 'Qpeak10','Qpeak50', & 
                            'Qlow_peak10', 'Qlow_peak50', 'Qhigh_peak10', 'Qhigh_peak50', 'SFDC', 'LFR','FDC_serie', 'AC_serie'
 
@@ -337,10 +337,10 @@ end if
          call eval_signatures(qval, Qobs_data(iv_start:iv_end), prec_data( iv_start:iv_end ), dates_data(iv_start:iv_end), &
                      .FALSE., ECval )
 
-  	write(uQval,'(100000(1X f6.2))'),  qval
-  	write(uObjval,formDataObj),  (/NSE_val, LNSE_val, VE_val, KGE_val, LKGE_val/)
-  	write(uSig,'(28(1X f8.3))'),  EC
-  	write(uSigVal,'(28(1X f8.3))'),  ECval
+  	write(uQval,'(100000(1X f6.2))')  qval
+  	write(uObjval,formDataObj)  (/NSE_val, LNSE_val, VE_val, KGE_val, LKGE_val/)
+  	write(uSig,'(28(1X f8.3))')  EC
+  	write(uSigVal,'(28(1X f8.3))')  ECval
 
 end do
 
