@@ -62,7 +62,9 @@ print *, "   Reading input data ..."
 call read_config()
 call read_forcing(etp_data,prec_data, Qobs_data, temp_data, dates_data, sumax_data, imax_data, pmax_data, snow_data)
 
+if(snow_zones .eqv. .True.) then
 call read_dem(dem, nRows, nCols, nodata, cellsize, xllcorner, yllcorner)
+end if
 call read_param(param, param_max, param_min, incon, optim)
 
 

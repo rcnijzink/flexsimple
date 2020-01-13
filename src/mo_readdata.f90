@@ -5,6 +5,7 @@ IMPLICIT NONE
 
 	logical,public				::Optim_flag
 	logical,public				::snow_flag
+	logical,public				::snow_zones
 	logical,public				::dyn_mode
         logical,public	                        ::read_data
         logical,public	                        ::optim_growth
@@ -15,6 +16,7 @@ IMPLICIT NONE
 	real*8,public				::mm_high
 	real*8,public				::Elev_station
 	integer,public				::Method
+    character*100               ::param_file    
 	integer,public				::Iterations
 	integer,public				::window
 	integer,public				::N_samples
@@ -245,7 +247,7 @@ namelist /ini_states/   Si, Su, Sf, Ss
 
 optim = .FALSE.
 
-       open(90,file='param.nml', delim='apostrophe')
+       open(90,file=param_file, delim='apostrophe')
        read(90,nml=parameters)
 
        read(90,nml=ini_states)
@@ -305,18 +307,97 @@ subroutine read_config()
   IMPLICIT NONE
 
         
+     CHARACTER(len=100), DIMENSION(:), ALLOCATABLE :: arguments      ! array for arguments
+     INTEGER                                       :: iargs          ! Counter
+     INTEGER                                       :: num_args       ! Number of arguments
+     CHARACTER*100                                 :: input_dir_tmp  ! Temporary inputpath 
+     CHARACTER*100                                 :: output_dir_tmp ! Temporary inputpath 
+     CHARACTER*100                                 :: param_file_tmp ! Temporary parameterfile 
+     CHARACTER*100                                 :: config_file_tmp! Temporary configfile
+     CHARACTER*100                                 :: config_file    ! configfile
+     LOGICAL                                       :: change_in      ! flag to change input
+     LOGICAL                                       :: change_out     ! flag to change output
+     LOGICAL                                       :: change_param   ! flag to change parameterfile
+     LOGICAL                                       :: change_config  ! flag to change config
 
-namelist /general/ snow_flag, Elev_station, mm_low, mm_high,                                                    &
+    namelist /general/ snow_flag, snow_zones, Elev_station, mm_low, mm_high,                                                    &
                    startdate, enddate, warmup_start, warmup_end, cal_start, cal_end, val_start, val_end,        & 
          input_dem, input_dir, output_dir, output_dir_cal, output_dir_val
-namelist /optimization/ Optim_flag, Method, Iterations, window, dyn_mode, read_data, optim_growth, &
+    namelist /optimization/ Optim_flag, Method, Iterations, window, dyn_mode, read_data, optim_growth, &
          change_start, change_end
 
+     !count arguments
+     num_args = command_argument_count()
 
-       open(11,file='config.nml')
+     !create array to save arguments
+     allocate(arguments(num_args))  
+
+     do iargs = 1, num_args
+         !loop over arguments and save them
+         call get_command_argument(iargs,arguments(iargs))
+     end do
+
+     change_in  = .FALSE.
+     change_out = .FALSE.
+     change_config = .FALSE.
+
+     !loop over saved arguments and check flags
+     do iargs = 1, num_args
+
+        !check inputpath
+        if(arguments(iargs) .eq. "-i") then
+           input_dir_tmp = arguments(iargs+1)
+           change_in = .True.
+        end if
+
+        !check outputpath
+        if(arguments(iargs) .eq. "-o") then
+           output_dir_tmp = arguments(iargs+1)
+           change_out = .True.
+        end if
+
+        !check namelist and read again if needed
+        if(arguments(iargs) .eq. "-c") then
+           config_file_tmp = arguments(iargs+1)
+           write(*,*) "Changed config.nml:", config_file_tmp
+           change_config = .True.
+        end if
+
+        if(arguments(iargs) .eq. "-p") then
+           param_file_tmp = arguments(iargs+1)
+           write(*,*) "Changed param.nml:", param_file_tmp
+           change_param = .True.
+        end if
+
+     end do
+
+    if(change_config .eqv. .TRUE.) then
+        config_file = config_file_tmp
+    else
+        config_file = 'config.nml'
+    end if
+
+    if(change_param .eqv. .TRUE.) then
+          param_file = param_file_tmp
+        else
+          param_file = 'param.nml'
+    end if
+
+
+       open(11,file=config_file)
        read(11,nml=general)
        read(11,nml=optimization)
        close(11)
+
+       if(change_in .eqv. .True.) then
+          input_dir = input_dir_tmp
+       end if 
+
+       if(change_out .eqv. .True.) then
+          output_dir = output_dir_tmp
+       end if 
+
+
 
 
 end subroutine

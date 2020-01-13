@@ -122,7 +122,7 @@ Pr = zero_dp
 
   !call snow module
    if(snow_flag .eqv. .TRUE.) then
-        call snowmod(airt, prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest, .FALSE.) 
+        call snowmod(airt, prec, dem, cellsize, Tthresh, Meltfactor, Peff, SnowRest, snow_zones) 
     else 
    Peff = prec
    end if
