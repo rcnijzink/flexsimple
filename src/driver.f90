@@ -120,7 +120,7 @@ case(3)
 print *, ""
 print *, "   Start random run calibration ..."
 call sample(param,param_max,param_min,incon, prec_data,temp_data, etp_data,&
-               dem, cellsize, Qobs_data, dates_data, optim, sumax_data, imax_data, snow_data)
+               dem, cellsize, Qobs_data, dates_data, optim, sumax_data, imax_data)
 
 case(4)
 print *, ""
