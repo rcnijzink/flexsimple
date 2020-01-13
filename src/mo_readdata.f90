@@ -391,10 +391,14 @@ subroutine read_config()
 
        if(change_in .eqv. .True.) then
           input_dir = input_dir_tmp
+          write(*,*) "Changed input to:", input_dir
        end if 
 
        if(change_out .eqv. .True.) then
           output_dir = output_dir_tmp
+          output_dir_cal = trim(adjustl(output_dir))//trim(adjustl("/cal/")) 
+          output_dir_val = trim(adjustl(output_dir))//trim(adjustl("/val/")) 
+          write(*,*) "Changed output to:", output_dir
        end if 
 
 
