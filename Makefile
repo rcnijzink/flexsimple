@@ -50,4 +50,4 @@ $(PROGRAM): $(SRC)
 .PHONY: clean
 
 clean:
-	rm -f *.o *.mod *.MOD *.exe $(OBJ_PATH)/*.o $(OBJ_PATH)/*.mod $(OBJ_PATH)*.MOD $(OBJ_PATH)*.exe $(PROGRAM)   
+	rm -f *.o *.mod *.MOD $(OBJ_PATH)/*.o $(OBJ_PATH)/*.mod $(OBJ_PATH)*.MOD $(OBJ_PATH)*.exe $(PROGRAM)   
