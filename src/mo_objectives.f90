@@ -11,10 +11,14 @@ subroutine NashEfficiency(Qo,Qm, NSE)
 		real*8,dimension(:), intent(in)	                :: Qm
 		real*8						:: Q_av
 		real*8, intent(out)	                        :: NSE
+        real*8,dimension(:), allocatable                :: Qo_corr
+        real*8,dimension(:), allocatable                :: Qm_corr
 
+        Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+        Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
 
-		Q_av=sum(Qo)/size(Qo)
-		NSE = 1-sum( (Qm - Qo)**2) / sum( (Qo - Q_av)**2)
+		Q_av=sum(Qo_corr)/size(Qo_corr)
+		NSE = 1-sum( (Qm_corr - Qo_corr)**2) / sum( (Qo_corr - Q_av)**2)
 
 
 
@@ -38,19 +42,24 @@ subroutine LogNashEfficiency(Qo,Qm, LNSE)
 		real*8,dimension(size(Qm,1))                    :: logQm
 		integer						:: i
 		integer						:: length, length2
+        real*8,dimension(:), allocatable                :: Qo_corr
+        real*8,dimension(:), allocatable                :: Qm_corr
 
-do i = 1, size(Qo,1)
-   if(Qo(i) .gt. tiny(Qo)) then
-      logQo(i)  = log(Qo(i)) 
+        Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+        Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
+
+do i = 1, size(Qo_corr,1)
+   if(Qo_corr(i) .gt. tiny(Qo_corr)) then
+      logQo(i)  = log(Qo_corr(i)) 
    else
       logQo(i)  = log(0.0001) 
    end if
 end do
 
 
-do i = 1, size(Qo,1)
-   if(Qm(i) .gt. tiny(Qm)) then
-      logQm(i)  = log(Qm(i)) 
+do i = 1, size(Qm_corr,1)
+   if(Qm_corr(i) .gt. tiny(Qm_corr)) then
+      logQm(i)  = log(Qm_corr(i)) 
    else
       logQm(i)  = log(0.0001) 
    end if
@@ -82,13 +91,17 @@ subroutine LogNashEfficiency_corr(Qo,Qm, LNSE)
 		integer						:: k
 		integer						:: i
 		integer						:: length, length2
+        real*8,dimension(:), allocatable                :: Qo_corr
+        real*8,dimension(:), allocatable                :: Qm_corr
 
+Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
 
 k=1
-do i = 1, size(Qo,1)
-   if(Qo(i) .gt. tiny(Qo)) then
-      logQo(k)  = log(Qo(k)) 
-      logQm(k)  = log(Qm(k)) 
+do i = 1, size(Qo_corr,1)
+   if(Qo_corr(i) .gt. tiny(Qo_corr)) then
+      logQo(k)  = log(Qo_corr(k)) 
+      logQm(k)  = log(Qm_corr(k)) 
       n_obs= real(k,8)
       k=k+1
    end if
@@ -117,9 +130,13 @@ subroutine VolumeError(Qo,Qm, VE)
 		real*8						:: Down
 		real*8						:: SumQ
 		real*8, intent(out)	                        :: VE
+        real*8,dimension(:), allocatable                :: Qo_corr
+        real*8,dimension(:), allocatable                :: Qm_corr
 
+        Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+        Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
 
-VE=1- abs( sum(Qm)-sum(Qo) )/sum( Qo ) 
+        VE=1- abs( sum(Qm_corr)-sum(Qo_corr) )/sum( Qo_corr ) 
 
 end subroutine
 
@@ -138,17 +155,22 @@ USE mo_sort
 		real*8, allocatable,dimension(:)      		:: Q_sort_obs  	! sorted Q
 		integer						:: m,n
 		real*8, intent(out)	                        :: FDC_NSE
+        real*8,dimension(:), allocatable                :: Qo_corr
+        real*8,dimension(:), allocatable                :: Qm_corr
 
-allocate( ind_sort_mod(size(Qm)) )
-allocate( ind_sort_obs(size(Qo)) )
+        Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+        Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
 
-allocate( Q_sort_mod(size(Qm)) )
-allocate( Q_sort_obs(size(Qo)) )
+allocate( ind_sort_mod(size(Qm_corr)) )
+allocate( ind_sort_obs(size(Qo_corr)) )
+
+allocate( Q_sort_mod(size(Qm_corr)) )
+allocate( Q_sort_obs(size(Qo_corr)) )
 
 
 
-Q_sort_obs=Qo
-Q_sort_mod=Qm
+Q_sort_obs=Qo_corr
+Q_sort_mod=Qm_corr
 
 call sort(Q_sort_obs)
 call sort(Q_sort_mod)
@@ -206,20 +228,24 @@ subroutine logKlingGupta(Qo,Qm, LKGE)
                 real*8                                          :: tmp
                 real*8                                          :: tmp2
                 real*8                                          :: tmp3
+                real*8,dimension(:), allocatable                :: Qo_corr
+                real*8,dimension(:), allocatable                :: Qm_corr
 
+Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
 
-do i = 1, size(Qo,1)
-   if(Qo(i) .gt. tiny(Qo)) then
-      logQo(i)  = log(Qo(i)) 
+do i = 1, size(Qo_corr,1)
+   if(Qo_corr(i) .gt. tiny(Qo_corr)) then
+      logQo(i)  = log(Qo_corr(i)) 
    else
       logQo(i)  = log(0.0001) 
    end if
 end do
 
 
-do i = 1, size(Qo,1)
-   if(Qm(i) .gt. tiny(Qm)) then
-      logQm(i)  = log(Qm(i)) 
+do i = 1, size(Qm_corr,1)
+   if(Qm_corr(i) .gt. tiny(Qm_corr)) then
+      logQm(i)  = log(Qm_corr(i)) 
    else
       logQm(i)  = log(0.0001) 
    end if
@@ -284,12 +310,18 @@ subroutine logKlingGupta_corr(Qo,Qm, LKGE)
                 real*8                                          :: tmp2
                 real*8                                          :: tmp3
                 real*8                                          :: length
+                real*8,dimension(:), allocatable                :: Qo_corr
+                real*8,dimension(:), allocatable                :: Qm_corr
+
+Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
+
 
 k=1
-do i = 1, size(Qo,1)
-   if(Qo(i) .gt. tiny(Qo)) then
-      logQo(k)  = log(Qo(k)) 
-      logQm(k)  = log(Qm(k)) 
+do i = 1, size(Qo_corr,1)
+   if(Qo(i) .gt. tiny(Qo_corr)) then
+      logQo(k)  = log(Qo_corr(k)) 
+      logQm(k)  = log(Qm_corr(k)) 
       n_obs= real(k,8)
       k=k+1
    end if
@@ -353,20 +385,22 @@ subroutine KlingGupta(Qo,Qm, KGE)
                 real*8						:: Qm_mean
                 real*8                                          :: sd_m
                 real*8                                          :: sd_o
+                real*8,dimension(:), allocatable                :: Qo_corr
+                real*8,dimension(:), allocatable                :: Qm_corr
+
+Qo_corr = PACK(Qo, isnan(Qo) .eqv. .False. )
+Qm_corr = PACK(Qm, isnan(Qo) .eqv. .False. )
+
+Qo_mean=sum(Qo_corr )/size(Qo_corr)
+Qm_mean=sum(Qm_corr)/size(Qm_corr)
 
 
+n=size(Qo_corr)
 
+cov = (1/(real(n,8) - 1) ) * sum( (Qo_corr-Qo_mean) * (Qm_corr-Qm_mean))
 
-Qo_mean=sum(Qo)/size(Qo)
-Qm_mean=sum(Qm)/size(Qm)
-
-
-n=size(Qo)
-
-cov = (1/(real(n,8) - 1) ) * sum( (Qo-Qo_mean) * (Qm-Qm_mean))
-
-sd_o = sqrt((1/(real(n,8) - 1) )* sum( (Qo-Qo_mean)**2))
-sd_m = sqrt((1/(real(n,8) - 1) )* sum( (Qm-Qm_mean)**2))
+sd_o = sqrt((1/(real(n,8) - 1) )* sum( (Qo_corr-Qo_mean)**2))
+sd_m = sqrt((1/(real(n,8) - 1) )* sum( (Qm_corr-Qm_mean)**2))
 
 
 cor  = cov/(sd_o*sd_m)
