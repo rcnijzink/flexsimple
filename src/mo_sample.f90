@@ -204,6 +204,7 @@ CONTAINS
         Qbest = output(1,:)
         Ebest = output(5,:) + output(6,:)
         parbest = paramset
+        KGEmax = KGE
      end if
 
 	par_mat(:, nn)     = paramset		!every column is one run
