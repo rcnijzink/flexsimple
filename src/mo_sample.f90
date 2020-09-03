@@ -252,11 +252,11 @@ print *, maxval(obj_mat(7,1:Iterations))
 
 
 !write calibration data to files
-open(uParam, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Parameters.txt")), status='unknown', action='write')
-open(uQbest_cal, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Qbest.txt")), status='unknown', action='write')
-open(uEbest_cal, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Ebest.txt")), status='unknown', action='write')
-open(uObj, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
-open(uObjval, file=trim(adjustl(output_dir_val)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
+open(uParam, file=trim(adjustl(output_dir)) // trim(adjustl("Parameters.txt")), status='unknown', action='write')
+open(uQbest_cal, file=trim(adjustl(output_dir)) // trim(adjustl("Qbest.txt")), status='unknown', action='write')
+open(uEbest_cal, file=trim(adjustl(output_dir)) // trim(adjustl("Ebest.txt")), status='unknown', action='write')
+open(uObj, file=trim(adjustl(output_dir)) // trim(adjustl("Obj_cal.txt")), status='unknown', action='write')
+open(uObjval, file=trim(adjustl(output_dir)) // trim(adjustl("Obj_val.txt")), status='unknown', action='write')
 
 write(uParam,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
                               "Kf", "Ks", "LP", "D", "Pmax","alpha","a", "b", "sumax_min"
