@@ -219,7 +219,8 @@ subroutine read_param(param, param_max, param_min, incon, optim)
      real*8,dimension(4)					::  Imax      
      real*8,dimension(4)					::  Sumax       
      real*8,dimension(4)					::  beta      
-     real*8,dimension(4)					::  Nlagf     
+     real*8,dimension(4)					::  Tlagf     
+     real*8,dimension(4)					::  Tlags     
      real*8,dimension(4)					::  D  
      real*8,dimension(4)					::  Pmax  
      real*8,dimension(4)					::  a
@@ -232,15 +233,15 @@ subroutine read_param(param, param_max, param_min, incon, optim)
 
 	integer				                        :: fileunit6		! file unit
 
-	real*8,dimension(14), intent(out)			:: param
-	real*8,dimension(14), intent(out)		        :: param_max
-	real*8,dimension(14), intent(out)			:: param_min
-	logical,dimension(14), intent(out)			:: optim
+	real*8,dimension(16), intent(out)			:: param
+	real*8,dimension(16), intent(out)		    :: param_max
+	real*8,dimension(16), intent(out)			:: param_min
+	logical,dimension(16), intent(out)			:: optim
 	real*8,dimension(4), intent(out)			:: incon
 
 
 namelist /parameters/   Meltfactor, Tthresh, Imax, Sumax, beta, &
-     Kf, Ks, LP, D, Pmax, alpha, a,b, sumax_min
+     Kf, Ks, LP, D, Pmax, Tlagf, Tlags, alpha, a,b, sumax_min
 
 namelist /ini_states/   Si, Su, Sf, Ss
    
@@ -255,19 +256,19 @@ optim = .FALSE.
 
 
 param=(/Meltfactor(3), Tthresh(3) , &
-       Imax(3),  Sumax(3),  beta(3), Kf(3), Ks(3), LP(3), D(3), Pmax(3), alpha(3), a(3),b(3),sumax_min(3)   &
+       Imax(3),  Sumax(3),  beta(3), Kf(3), Ks(3), LP(3), D(3), Pmax(3), Tlagf(3), Tlags(3), alpha(3), a(3),b(3),sumax_min(3)   &
        /)
 
 param_max=(/Meltfactor(2), Tthresh(2) , &
-       Imax(2),  Sumax(2), beta(2), Kf(2), Ks(2), LP(2), D(2), Pmax(2), alpha(2), a(2), b(2),sumax_min(2) &
+       Imax(2),  Sumax(2), beta(2), Kf(2), Ks(2), LP(2), D(2), Pmax(2), Tlagf(2), Tlags(2), alpha(2), a(2), b(2),sumax_min(2) &
        /)
 
 param_min=(/Meltfactor(1), Tthresh(1) , &
-       Imax(1),  Sumax(1), beta(1), Kf(1), Ks(1), LP(1), D(1), Pmax(1), alpha(1), a(1), b(1),sumax_min(1) &
+       Imax(1),  Sumax(1), beta(1), Kf(1), Ks(1), LP(1), D(1), Pmax(1), Tlagf(1), Tlags(1), alpha(1), a(1), b(1),sumax_min(1) &
        /)
 
 where( (/Meltfactor(4), Tthresh(4) , &
-       Imax(4),  Sumax(4), beta(4), Kf(4), Ks(4), LP(4), D(4), Pmax(4), alpha(4), a(4), b(4),sumax_min(4) &
+       Imax(4),  Sumax(4), beta(4), Kf(4), Ks(4), LP(4), D(4), Pmax(4), Tlagf(4), Tlags(4), alpha(4), a(4), b(4),sumax_min(4) &
        /) .eq. 1) optim = .TRUE.
 
 incon=(/Si, Su, Sf, Ss/)
@@ -281,7 +282,7 @@ incon=(/Si, Su, Sf, Ss/)
        fluxes_states_names(5)  = "Eadt"
        fluxes_states_names(6)  = "Eidt"
 
-       fluxes_states_names(7) = "Rs"
+       fluxes_states_names(7) = "Pr"
 
        fluxes_states_names(8)="Si"
        fluxes_states_names(9)="Su"

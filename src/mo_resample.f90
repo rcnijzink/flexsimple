@@ -22,16 +22,16 @@ USE mo_init_random_seed
         real*8,intent(in)                       :: cellsize
 	real*8,dimension(:), allocatable, intent(in)	:: Qobs_data	! observed discharge
 	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
-        real*8,dimension(14) 				:: r		! random number array
-	real*8,dimension(14), intent(in)		:: par_ini	! maximum parameter values
-	real*8,dimension(14), intent(in)		:: par_max	! maximum parameter values
-	real*8,dimension(14), intent(in)		:: par_min	! minimum parameter values
-	logical,dimension(14), intent(in)		:: optim	! minimum parameter values
+        real*8,dimension(16) 				:: r		! random number array
+	real*8,dimension(16), intent(in)		:: par_ini	! maximum parameter values
+	real*8,dimension(16), intent(in)		:: par_max	! maximum parameter values
+	real*8,dimension(16), intent(in)		:: par_min	! minimum parameter values
+	logical,dimension(16), intent(in)		:: optim	! minimum parameter values
 	real*8,dimension(:), allocatable, intent(in)	:: sumax_data 	! sumax data
 	real*8,dimension(size(sumax_data))              :: sumax_data2 	! sumax data
 
-	real*8,dimension(14)             		:: par_val	! minimum parameter values
-	real*8,dimension(14)             		:: paramset	! set of parameters
+	real*8,dimension(16)             		:: par_val	! minimum parameter values
+	real*8,dimension(16)             		:: paramset	! set of parameters
 	real*8,allocatable, dimension(:)		:: q		! modelled discharge
 	real*8,allocatable, dimension(:)		:: qval		! validation discharge
 	real*8, dimension(28)            	        :: EC    	! evalutation criteria
@@ -127,7 +127,7 @@ length=size(prec_data( iw_start:iv_end ))
 
 allocate( q( length) )
 allocate( Q_mat( length, int(Iterations)) )
-allocate( par_mat(14, int(Iterations)) )
+allocate( par_mat(16, int(Iterations)) )
 allocate( obj_mat(5, int(Iterations)) )
 allocate( incon_mat(4, int(Iterations)) )
 
@@ -220,8 +220,8 @@ open(uQ, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Q.txt")), status='u
 open(uFinalStates, file=trim(adjustl(output_dir_cal)) // trim(adjustl("FinalStates.txt")), status='unknown', action='write')
 open(uObj, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
 
-write(uParam,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
-                              "Kf", "Ks", "LP", "D", "Pmax","alpha","a","b", "sumax_min"
+write(uParam,'(16(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+                              "Kf", "Ks", "LP", "D", "Pmax", "Tlagf" , "Tlags" ,"alpha","a","b", "sumax_min"
 
 write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10, 2X a10)'
 write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
@@ -233,7 +233,7 @@ do i=1, Iterations
 
         count_solutions   = count_solutions+1
         write(uObj,formDataObj)  obj_mat(1:5,i)
-        write(uParam,'(14(1X f10.2))')  par_mat(:,i)
+        write(uParam,'(16(1X f10.2))')  par_mat(:,i)
         write(uQ,'(100000(1X f6.2))')  Q_mat(:,i)
         write(uFinalStates,*) incon_mat(:,i)
 

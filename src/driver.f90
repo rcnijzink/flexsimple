@@ -19,22 +19,22 @@ IMPLICIT NONE
 
   
 	integer                                 :: itsteps		         ! counter
-	real*8, allocatable,dimension(:)	:: etp_data,prec_data, Qobs_data,q, temp_data, sumax_data
-	real*8, allocatable,dimension(:)	:: imax_data
-	real*8, allocatable,dimension(:)	:: pmax_data
-	real*8, allocatable,dimension(:)	:: snow_data
-	real*8, allocatable, dimension(:,:)	:: output
+	real*8, allocatable,dimension(:)	    :: etp_data,prec_data, Qobs_data,q, temp_data, sumax_data
+	real*8, allocatable,dimension(:)	    :: imax_data
+	real*8, allocatable,dimension(:)	    :: pmax_data
+	real*8, allocatable,dimension(:)	    :: snow_data
+	real*8, allocatable, dimension(:,:)	    :: output
 	character*10, allocatable, dimension(:)	:: dates_data
-	real*8,dimension(14)			:: param
-	real*8,dimension(14)		        :: param_max
-	real*8,dimension(14)			:: param_min
-	logical,dimension(14)			:: optim
-	real*8,dimension(4)			:: incon
+	real*8,dimension(16)			        :: param
+	real*8,dimension(16)		            :: param_max
+	real*8,dimension(16)			        :: param_min
+	logical,dimension(16)			        :: optim
+	real*8,dimension(4)			            :: incon
 
         real*8, dimension(:,:), allocatable     :: dem
         real*8, dimension(:,:), allocatable     :: ndvi
-        integer, dimension(:,:), allocatable     :: facc
-        integer, dimension(:,:), allocatable     :: fdir
+        integer, dimension(:,:), allocatable    :: facc
+        integer, dimension(:,:), allocatable    :: fdir
         real*8, dimension(:,:), allocatable     :: slope
         real*8                                  :: cellsize
         real*8                                  :: xllcorner
@@ -51,10 +51,10 @@ IMPLICIT NONE
 
 print *, "---------------------------------------"
 print *, "               FLEX-simple               "
-print *, "              version 3.0              "
+print *, "              version 0.1              "
 print *, "             4 bucket model           "
 print *, "---------------------------------------"
-print *, "   Delft University of Technology     "
+
 
 
 print *, ""
@@ -75,7 +75,7 @@ if(Optim_flag .eqv. .FALSE.) then
 print *, ""
 print *, "   Starting FLEXsimple ..."
 
-call model(param,incon, prec_data, temp_data, etp_data, dem, cellsize, output)
+call model(param(1:12),incon, prec_data, temp_data, etp_data, dem, cellsize, output)
 
 print *, ""
 print *, "   Saving output ..."

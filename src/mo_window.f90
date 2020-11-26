@@ -23,13 +23,13 @@ USE mo_init_random_seed
         real*8,intent(in)                       :: cellsize
 	real*8,dimension(:), allocatable, intent(in)	:: Qobs_data	! observed discharge
 	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
-        real*8,dimension(14) 				:: r		! random number array
-	real*8,dimension(14), intent(in)		:: par_ini	! maximum parameter values
-	real*8,dimension(14), intent(in)		:: par_max	! maximum parameter values
-	real*8,dimension(14), intent(in)		:: par_min	! minimum parameter values
-	logical,dimension(14), intent(in)		:: optim	! minimum parameter values
-	real*8,dimension(14)             		:: par_val	! minimum parameter values
-	real*8,dimension(14)             		:: paramset	! set of parameters
+        real*8,dimension(16) 				:: r		! random number array
+	real*8,dimension(16), intent(in)		:: par_ini	! maximum parameter values
+	real*8,dimension(16), intent(in)		:: par_max	! maximum parameter values
+	real*8,dimension(16), intent(in)		:: par_min	! minimum parameter values
+	logical,dimension(16), intent(in)		:: optim	! minimum parameter values
+	real*8,dimension(16)             		:: par_val	! minimum parameter values
+	real*8,dimension(16)             		:: paramset	! set of parameters
 	real*8,allocatable, dimension(:)		:: q		! modelled discharge
 	real*8,allocatable, dimension(:)		:: qval		! validation discharge
 	real*8, dimension(26)            	        :: EC    	! evalutation criteria
@@ -358,7 +358,7 @@ end do
 
 
 
-           write(uParam+iwindow,'(14(1X f8.2))')  paramset         
+           write(uParam+iwindow,'(16(1X f8.2))')  paramset         
            write(uQ+iwindow,*)  output(1,start_ind:end_ind)
            write(uObj+iwindow,formDataObj) (/NSE, LNSE, VE, KGE, LKGE, WB/)
 !           write(uEa+iWindow,*) output(5,start_ind:end_ind)

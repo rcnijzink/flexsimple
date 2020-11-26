@@ -23,11 +23,11 @@ CONTAINS
     real*8,intent(in)                                   :: cellsize     ! size of grid dem
 	real*8,dimension(:), allocatable, intent(in)	    :: Qobs_data	! observed discharge
 	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
-    real*8,dimension(14) 				                :: r		    ! random number array
-	real*8,dimension(14), intent(in)		            :: par_ini	    ! maximum parameter values
-	real*8,dimension(14), intent(in)		            :: par_max	    ! maximum parameter values
-	real*8,dimension(14), intent(in)		            :: par_min	    ! minimum parameter values
-	logical,dimension(14), intent(in)		            :: optim	    ! parameters to optimize
+    real*8,dimension(16) 				                :: r		    ! random number array
+	real*8,dimension(16), intent(in)		            :: par_ini	    ! maximum parameter values
+	real*8,dimension(16), intent(in)		            :: par_max	    ! maximum parameter values
+	real*8,dimension(16), intent(in)		            :: par_min	    ! minimum parameter values
+	logical,dimension(16), intent(in)		            :: optim	    ! parameters to optimize
 	real*8,dimension(:), allocatable, intent(in)	    :: sumax_data 	! sumax data
 	real*8,dimension(:), allocatable,  intent(in)	    :: Imax_data 	! interception cap. data
 
@@ -80,11 +80,11 @@ CONTAINS
 	real*8, dimension(:,:), allocatable		            :: outputval_mat! output validation		
 	real*8, dimension(:,:), allocatable		            :: obj_mat	    ! matrix with objective functions
 	real*8, dimension(:,:), allocatable		            :: objval_mat	! matrix with validation objective functions
-	real*8,dimension(14)             		            :: paramset	    ! set of parameters
-	real*8,dimension(14)             		            :: parbest      ! best set of parameters
+	real*8,dimension(16)             		            :: paramset	    ! set of parameters
+	real*8,dimension(16)             		            :: parbest      ! best set of parameters
 	integer						                        :: pareto_length! number of pareto solutions
 	real*8, dimension(:,:), allocatable		            :: pareto_obj	! matrix with pareto objective function values
-	real*8,dimension(14)             		            :: par_val	    ! minimum parameter values
+	real*8,dimension(16)             		            :: par_val	    ! minimum parameter values
 	real*8, dimension(:,:), allocatable		            :: par_mat	    ! matrix with parameters
 	real*8,allocatable, dimension(:)		            :: q		    ! modelled discharge
 	real*8, dimension(:),   allocatable		            :: Qbest	    ! matrix with modelled Q
@@ -139,7 +139,7 @@ CONTAINS
    allocate( q( length) )
    allocate( Qbest( length ) )
    allocate( Ebest( length ) )
-   allocate( par_mat(14, int(Iterations)) )
+   allocate( par_mat(16, int(Iterations)) )
    allocate( obj_mat(7, int(Iterations)) )
    allocate( objval_mat( 7, int(Iterations)) )
 
@@ -164,19 +164,19 @@ CONTAINS
 
         if(dyn_mode .eqv. .TRUE.) then 
 
-        paramset(4)=r2*(par_max(4)-paramset(14))+paramset(14)
+        paramset(4)=r2*(par_max(4)-paramset(16))+paramset(16)
 
            !reading in root zone data
            if(read_data .eqv. .TRUE.) then 
               !make a timeserie of Imax
-              call gen_sumax(paramset(12:14), paramset(3), ichange_start, ichange_end, prec_data( iw_start:iv_end ), imax_data2 )
+              call gen_sumax(paramset(14:16), paramset(3), ichange_start, ichange_end, prec_data( iw_start:iv_end ), imax_data2 )
 
 	       call model(paramset,incon, prec_data( iw_start:iv_end ) &
 	      ,temp_data(iw_start:iv_end),etp_data(iw_start:iv_end), dem, cellsize, output,sumax_data, imax_data2)
            
            ! else make a timeserie of sumax
            else               
-               call gen_sumax(paramset(12:14), paramset(4), ichange_start, ichange_end, prec_data( iw_start:iv_end ), sumax_data2 )
+               call gen_sumax(paramset(14:16), paramset(4), ichange_start, ichange_end, prec_data( iw_start:iv_end ), sumax_data2 )
 
                !call the model
                call model(paramset,incon, prec_data( iw_start:iv_end ) &
@@ -258,8 +258,8 @@ open(uEbest_cal, file=trim(adjustl(output_dir)) // trim(adjustl("Ebest.txt")), s
 open(uObj, file=trim(adjustl(output_dir)) // trim(adjustl("Obj_cal.txt")), status='unknown', action='write')
 open(uObjval, file=trim(adjustl(output_dir)) // trim(adjustl("Obj_val.txt")), status='unknown', action='write')
 
-write(uParam,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
-                              "Kf", "Ks", "LP", "D", "Pmax","alpha","a", "b", "sumax_min"
+write(uParam,'(16(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+                              "Kf", "Ks", "LP", "D", "Pmax", "Tlagf" , "Tlags","alpha","a", "b", "sumax_min"
 
 write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10, 2X a10,2X a10, 2X a10, 2X a10)'
 write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3, 2X f10.6,2X f10.6, 2X f10.3, 2X f10.3)'
@@ -276,7 +276,7 @@ do i=1, Iterations
         count_solutions   = count_solutions+1
         write(uObj,formDataObj)  obj_mat(:,i)
   	    write(uObjval,formDataObj)  objval_mat(:,i)
-        write(uParam,'(14(1X f10.5))')  par_mat(:,i)
+        write(uParam,'(16(1X f10.5))')  par_mat(:,i)
 
 end do
 

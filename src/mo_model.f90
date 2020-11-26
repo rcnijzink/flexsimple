@@ -8,27 +8,26 @@ CONTAINS
 
 USE mo_readdata
 
-       	real*8, dimension(11), intent(in)	             :: param	! model parameters
-      	real*8, dimension(4),intent(in)		             :: incon	! initial states	
-      	real*8,dimension(:), intent(in)		             :: prec	! precipation series
-	real*8,dimension(:), intent(in)		             :: airt	! temperature series
-	real*8,dimension(:), intent(in)		             :: ep	! evaporation series
-        real*8, dimension(:,:), allocatable, intent(in)      :: dem
-        real*8,intent(in)                                    :: cellsize
-      	real*8,allocatable, dimension(:,:), intent(out)	     :: output ! Output
-	real*8,dimension(:), intent(in), optional            :: sumax_serie ! sumax series
-	real*8,dimension(:), intent(in), optional            :: Imax_serie ! sumax series
-	!real*8,dimension(:), intent(in), optional            :: Mmelt_serie ! sumax series
+     real*8, dimension(12), intent(in)	                 :: param	    ! model parameters
+     real*8, dimension(4),intent(in)		             :: incon	    ! initial states	
+     real*8,dimension(:), intent(in)		             :: prec	    ! precipation series
+	 real*8,dimension(:), intent(in)		             :: airt	    ! temperature series
+	 real*8,dimension(:), intent(in)		             :: ep	        ! evaporation series
+     real*8, dimension(:,:), allocatable, intent(in)     :: dem         ! elevation
+     real*8,intent(in)                                   :: cellsize    !size of cells
+     real*8,allocatable, dimension(:,:), intent(out)	 :: output      ! Time series output
+	 real*8,dimension(:), intent(in), optional           :: sumax_serie ! max unsat. storage time series
+	 real*8,dimension(:), intent(in), optional           :: Imax_serie  ! max interception series
 
-
-        integer 				:: tmax	        ! number of timesteps
-	integer 				:: i		! counter
-	integer 				:: it		! counter of timestep
+     !general
+     integer 				:: tmax	        ! number of timesteps
+	 integer 				:: i		    ! counter
+	 integer 				:: it		    ! counter of timestep
 
      !forcing
      real*8 					:: temp		! temperature at timestep it
      real*8 					:: Pdt  	! precipitation at timestep it
-     real*8 					:: dt	        ! water balance
+     real*8 					:: dt	    ! time step
 
      !model parameters
      real*8					::  Meltfactor  
@@ -36,18 +35,24 @@ USE mo_readdata
      real*8					::  Imax 
      real*8					::  Sumax        
      real*8					::  beta 
-     real*8					::  Kf                      
+     real*8					::  Kf    
+     real*8					::  Kof                                 
      real*8					::  Ks               
+     real*8					::  Kf1               
      real*8					::  LP        
      real*8					::  D
      real*8					::  Pmax
+     real*8					::  Infmax
      real*8					::  alpha
+     real*8					::  Tlagf
+     real*8					::  Tlags
 
     !states
      real*8					:: Si
      real*8					:: Su
      real*8					:: Su_accent
      real*8					:: Sf
+     real*8					:: Sd
      real*8					:: Ss
      real*8					:: Ss_in
      real*8					:: Ss_corr
@@ -55,12 +60,17 @@ USE mo_readdata
     !fluxes
      real*8                  		        :: Pedt	! precipation series
      real*8 					:: R	! runoff at timestep it
-     real*8, dimension(:), allocatable	        :: Rs 	! rain at timestep it
+     real*8 					:: Rof	! runoff at timestep it
+
      real*8, dimension(:), allocatable	        :: Rf 	! rain at timestep it
+     real*8, dimension(:), allocatable 					:: Rf_weighted 	        ! rain at timestep it      
      real*8, dimension(:), allocatable	        :: Peff 	! rain at timestep it
      real*8, dimension(:), allocatable	        :: SnowRest 	! rain at timestep it
      real*8 					:: Kt 	        ! rain at timestep it
-     real*8 					:: Pr 	        ! rain at timestep it      
+     real*8, dimension(:), allocatable	:: Pr 	        ! rain at timestep it      
+     real*8, dimension(:), allocatable 	:: Pr_weighted 	        ! rain at timestep it      
+     real*8, dimension(:), allocatable	:: Pr2 	        ! rain at timestep it      
+     real*8, dimension(:), allocatable 	:: Pr2_weighted 	        ! rain at timestep it      
      real*8 					:: Pr_su        ! rain at timestep it 
      real*8 					:: Pedt_active 	! Potential evaporation     
      real*8, dimension(:), allocatable	        :: Weights_f 	! rain at timestep it
@@ -70,10 +80,12 @@ USE mo_readdata
      real*8 					:: Eipdt	! degree day factor
 
      real*8 					:: Qf	! degree day factor
+     real*8 					:: Qf1	! degree day factor
      real*8 					:: Qr	! degree day factor
      real*8 					:: Qs	! degree day factor
      real*8 					:: Qs_tot	! degree day factor
      real*8 					:: Qm	! degree day factor
+
      real*8 					:: Qsum	! degree day factor
 
     !water balance
@@ -81,18 +93,23 @@ USE mo_readdata
      real*8 					:: Flux_in	! sum of in
      real*8 					:: Storage_in	! storage t=1
      real*8 					:: Storage_out	! storage last t
+     real*8, dimension(:), allocatable	        :: Weights_ss 	! rain at timestep it
+     real*8, dimension(:), allocatable	        :: Weights_sf 	! rain at timestep it
      real*8 					:: WB	        ! water balance
 
 
 
-!Initialize model parameters
+    !Initialize and allocate time series 
+    tmax=size(prec)
+    allocate( Rf( tmax) )
+    allocate( Pr( tmax) ) 
+    allocate( Pr2( tmax) )
+    allocate( Rf_weighted( tmax) )
+    allocate( Pr_weighted( tmax) )
+    allocate( Pr2_weighted( tmax) )
+    allocate( output(12,tmax) )
 
-tmax=size(prec)
-allocate( Rs( tmax) )
-allocate( Rf( tmax) )
-allocate( output(12,tmax) )
-
-      
+  !Initialize parameters    
   Meltfactor  = param(1) 
   Tthresh     = param(2)  
   Imax        = param(3)
@@ -103,22 +120,23 @@ allocate( output(12,tmax) )
   LP          = param(8)
   D           = param(9)
   Pmax        = param(10)
-  alpha       = param(11)
+  Tlags       = param(11)
+  Tlagf       = param(12)
 
+  !weights for lag functions
+  call weighfun_triangle(Tlags, Weights_ss)
+  call weighfun_triangle(Tlagf, Weights_sf)
 
-!Sumax     = sumax_loc/ (1+beta)  !maximum storage in catchment equals (1+beta) times maximum occuring value of soil moisture capacity
-
-!Initialize the states of the model
-
-  
+  !Initialize the states of the model
   Si = incon(1)
   Su = incon(2)
   Ss = incon(3)
   Sf = incon(4)
-Su_accent = zero_dp
-Ss_corr = zero_dp
-Rs = zero_dp
-Pr = zero_dp
+
+  Su_accent = zero_dp
+  Ss_corr = zero_dp
+
+  Pr = zero_dp
 
   !call snow module
    if(snow_flag .eqv. .TRUE.) then
@@ -143,10 +161,6 @@ do it=1,tmax
        if(present(Imax_serie)) then
           Imax = Imax_serie(it)
        end if
-
-       !if(present(Mmelt_serie)) then
-       !   Meltfactor = Mmelt_serie(it)
-       !end if
 
        if(Pdt .le. epsilon(zero_dp)) then
        Pdt = zero_dp
@@ -201,73 +215,78 @@ do it=1,tmax
   Eadt=minval( (/Eadt, Su/) )
   Su = Su - Eadt
 
-
-
 !percolation from soil moisture to groundwater
-   Pr = Pmax * ( Su/Sumax)
-   Pr = minval((/Su, Pr/))
-   Su = Su - Pr
+   Pr(it) = Pmax * ( Su/Sumax)
+
+   Pr(it) = minval((/Su, Pr(it)/))
+   Su = Su - Pr(it)
+
+   if(it .gt. size(Weights_ss)) then
+      Pr_weighted(it) = sum(Pr( (it-size(Weights_ss)):it) * Weights_ss(size(Weights_ss):1:-1))
+   else
+      Pr_weighted(it) = sum(Pr(1:it) * Weights_ss(it:1:-1))
+   end if
 
    Su_accent = ((1+beta)*Sumax )*(1- (1-Su/Sumax)**(1/(1+beta)))
 
 
 ! Fast Reservoir -  non-linear
-  Rf(it)=(1-D)*R
+  Rf(it)= (1-D)*R
 
-  Sf = Sf + Rf(it)
-  Qf = (Sf**alpha) / Kf
+   if(it .gt. size(Weights_sf)) then
+      Rf_weighted(it) = sum(Rf((it-size(Weights_sf)):it) * Weights_sf(size(Weights_sf):1:-1))
+   else
+      Rf_weighted(it) = sum(Rf(1:it) * Weights_sf(it:1:-1))
+   end if
+
+  Sf = Sf + Rf_weighted(it)
+
+  Qf = Sf / Kf
   Qf = minval( (/Qf,Sf/) )
   Sf = Sf - Qf
 
-! Recharge to slow reservoir
-  Rs(it)=D*R
+! Very fast component - overland flow
+  Pr2(it)=D*R
 
+   if(it .gt. size(Weights_ss)) then
+      Pr2_weighted(it) = sum(Pr2((it-size(Weights_ss)):it) * Weights_ss(size(Weights_ss):1:-1))
+   else
+      Pr2_weighted(it) = sum(Pr2(1:it) * Weights_ss(it:1:-1))
+   end if
 
 !---------------------------------------------------
 ! Slow (shared) reservoir 
 !---------------------------------------------------
 
-  Ss = Ss + Rs(it) + Pr
+  Ss = Ss + Pr_weighted(it) + Pr2_weighted(it)
 
 
   !Qs = zero_dp
-  !Qs = (Ss**Nss) / Ks 
-  Qs = Ss / Ks 
-  Qs = minval( (/Qs,Ss/) )
+  !Qs = (Ss**Nss) / Ks
+     Qs = Ss / Ks 
+     Qs = minval( (/Qs,Ss/) )
+  !else
+  !   Qs = zero_dp
+  !end if
 
   Ss = Ss - Qs
-
-
-!  Ss_in = Ss + Rs(it) + Pr
-!   Ss = (Ss_in*exp(- 1_8/Ks)) - (  (L*Ks) * ( 1_8-exp(- 1_8/Ks) ) )
-
-!if(Ss .gt. zero_dp) then
-!   Qs_tot = Ss_in - Ss 
-!   Qs = maxval( (/zero_dp, (Qs_tot - L)   /) )
-!else
-!   Qs_tot = L
-!   Ss = Ss_in - L
-!   Qs = zero_dp
-!end if
-
 
 
 !---------------------------------------------------
 ! Results
 !---------------------------------------------------
 
- Qm = Qs  + Qf
-
+ Qm = Qs  + Qf + Qf1
 
 
  !write fluxes to output
        output(1,it)  = Qm 
        output(2,it)  = Qs
-       output(3,it)  = Pr !Qf
+       output(3,it)  = Qf
        output(4,it)  = Peff(it)
        output(5,it)  = Eadt
        output(6,it)  = Eidt
-       output(7,it)  = Rs(it)
+       output(7,it)  = Pr(it)
 
 !write states to output
 
@@ -286,7 +305,7 @@ end do
 ! WB 
       Flux_out   =     sum(output(1,:))  + &
                        sum(output(5,:))  + & 
-                       sum(output(6,:))  
+                       sum(output(6,:)) 
 
       Flux_in    =     sum(Peff)
 
@@ -301,12 +320,15 @@ end do
                      output(11, tmax) 
                      
 
-      WB = Flux_in - Flux_out - (Storage_out-Storage_in) !- L*real(tmax,8) 
+      WB = Flux_in - Flux_out - (Storage_out-Storage_in) - &
+             ( sum(Pr)-sum(Pr_weighted) )       - &
+             ( sum(Pr2)-sum(Pr2_weighted) )       - &
+              ( sum(Rf)-sum(Rf_weighted) )       
       
 if( (WB .gt. 0.00001) .or. (WB .lt. -0.00001) ) then
 print *, "WARNING: waterbalance not closed"
 print *, "Waterbalance:                  " , WB
-print *, Flux_out, Flux_in, Storage_in, Storage_out, Sumax
+print *, Flux_out, Flux_in, Storage_in, Storage_out, Sumax, sum(Pr2_weighted), sum(output(3,:))
 stop
 end if
 
