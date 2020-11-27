@@ -25,10 +25,10 @@ IMPLICIT NONE
 	real*8, allocatable,dimension(:)	    :: snow_data
 	real*8, allocatable, dimension(:,:)	    :: output
 	character*10, allocatable, dimension(:)	:: dates_data
-	real*8,dimension(16)			        :: param
-	real*8,dimension(16)		            :: param_max
-	real*8,dimension(16)			        :: param_min
-	logical,dimension(16)			        :: optim
+	real*8,dimension(17)			        :: param
+	real*8,dimension(17)		            :: param_max
+	real*8,dimension(17)			        :: param_min
+	logical,dimension(17)			        :: optim
 	real*8,dimension(4)			            :: incon
 
         real*8, dimension(:,:), allocatable     :: dem
@@ -75,7 +75,7 @@ if(Optim_flag .eqv. .FALSE.) then
 print *, ""
 print *, "   Starting FLEXsimple ..."
 
-call model(param(1:12),incon, prec_data, temp_data, etp_data, dem, cellsize, output)
+call model(param(1:14),incon, prec_data, temp_data, etp_data, dem, cellsize, output)
 
 print *, ""
 print *, "   Saving output ..."

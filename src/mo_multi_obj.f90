@@ -13,54 +13,54 @@ USE mo_objectives
 USE mo_eval_signatures
 USE mo_init_random_seed
 
-	real*8,dimension(4), intent(in)		        :: incon	! initial conditions states
-	real*8,dimension(:), allocatable, intent(in)	:: etp_data	! evaporation data
-	real*8,dimension(:), allocatable, intent(in)	:: prec_data 	! precipitation data
-	real*8,dimension(:), allocatable, intent(in)	:: temp_data 	! temperature data
-        real*8, dimension(:,:), allocatable, intent(in)     :: dem
-        real*8,intent(in)                       :: cellsize
-	real*8,dimension(:), allocatable, intent(in)	:: Qobs_data	! observed discharge
-	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
-        real*8,dimension(16) 				:: r		! random number array
-	real*8,dimension(16), intent(in)		:: par_ini	! maximum parameter values
-	real*8,dimension(16), intent(in)		:: par_max	! maximum parameter values
-	real*8,dimension(16), intent(in)		:: par_min	! minimum parameter values
-	logical,dimension(16), intent(in)		:: optim	! minimum parameter values
-	real*8,dimension(:), allocatable, intent(in)	:: sumax_data 	! sumax data
+	real*8,dimension(4), intent(in)		                :: incon	 ! initial conditions states
+	real*8,dimension(:), allocatable, intent(in)	    :: etp_data	 ! evaporation data
+	real*8,dimension(:), allocatable, intent(in)	    :: prec_data ! precipitation data
+	real*8,dimension(:), allocatable, intent(in)	    :: temp_data ! temperature data
+        real*8, dimension(:,:), allocatable, intent(in) :: dem
+    real*8,intent(in)                                   :: cellsize
+	real*8,dimension(:), allocatable, intent(in)	    :: Qobs_data	! observed discharge
+	character*10,dimension(:), allocatable, intent(in)  :: dates_data	! observed discharge
+	real*8,dimension(17), intent(in)		            :: par_ini	    ! maximum parameter values
+	real*8,dimension(17), intent(in)		            :: par_max	    ! maximum parameter values
+	real*8,dimension(17), intent(in)		            :: par_min	    ! minimum parameter values
+	logical,dimension(17), intent(in)		            :: optim	    ! minimum parameter values
+	real*8,dimension(:), allocatable, intent(in)	    :: sumax_data 	! sumax data
 
-	real*8,dimension(16)             		:: par_val	! minimum parameter values
-	real*8,dimension(16)             		:: paramset	! set of parameters
+	real*8,dimension(17)             		:: par_val	! minimum parameter values
+	real*8,dimension(17)             		:: paramset	! set of parameters
 	real*8,allocatable, dimension(:)		:: q		! modelled discharge
 	real*8,allocatable, dimension(:)		:: qval		! validation discharge
-	real*8, dimension(28)            	        :: EC    	! evalutation criteria
-	real*8, dimension(28)                           :: ECval    	! evalutation criteria
-	real*8						:: NSE		! Nash-Sutcliffe efficienct
-	real*8						:: LNSE		! log NSE
-	real*8						:: VE		! Volume error
-	real*8						:: FDC_NSE	! Nash of flow duration curve
-	real*8						:: NSE_val	! NSE for validation	
-	real*8						:: LNSE_val	! log NSE for validation
-	real*8						:: VE_val	! Volume error validation
-	real*8						:: FDC_NSE_val	! validation Nash FDC
-	integer						:: length	! length of period
-	integer						:: val_length	! length of validation period
-	real*8, allocatable, dimension(:,:)	        :: output	! output matrix
-	real*8, allocatable, dimension(:,:)	        :: output_val	! output matrix validation
-	integer						:: nn 		! counter
+    real*8,dimension(17) 				    :: r		    ! random number array
+	real*8, dimension(28)            	    :: EC    	! evalutation criteria
+	real*8, dimension(28)                   :: ECval    	! evalutation criteria
+	real*8						            :: NSE		! Nash-Sutcliffe efficienct
+	real*8						            :: LNSE		! log NSE
+	real*8						            :: VE		! Volume error
+	real*8						            :: FDC_NSE	! Nash of flow duration curve
+	real*8						            :: NSE_val	! NSE for validation	
+	real*8						            :: LNSE_val	! log NSE for validation
+	real*8						            :: VE_val	! Volume error validation
+	real*8					              	:: FDC_NSE_val	! validation Nash FDC
+	integer						            :: length	! length of period
+	integer						            :: val_length	! length of validation period
+	real*8, allocatable, dimension(:,:)	    :: output	! output matrix
+	real*8, allocatable, dimension(:,:)	    :: output_val	! output matrix validation
+	integer						            :: nn 		! counter
 	integer, allocatable, dimension(:)		:: seed		! initial random seed
-	integer						:: t		! counter
-	integer						:: count_feasibles !number of feasible sets
-	integer						:: count_solutions !number of final solutions
-	integer						:: j		! counter
-	integer						:: i		! counter
-	integer						:: k		! counter
-	integer						:: m		! counter
-	integer						:: jj		! counter
-	integer						:: ii		! counter
-	real*8						:: bound1	! pareto_bound
-	real*8						:: bound2	! pareto_bound
-	real*8						:: bound3	! pareto_bound
-	real*8						:: bound4	! pareto_bound
+	integer						            :: t		! counter
+	integer						            :: count_feasibles !number of feasible sets
+	integer						            :: count_solutions !number of final solutions
+	integer						            :: j		! counter
+	integer						            :: i		! counter
+	integer						            :: k		! counter
+	integer						            :: m		! counter
+	integer						            :: jj		! counter
+	integer						            :: ii		! counter
+	real*8						            :: bound1	! pareto_bound
+	real*8						            :: bound2	! pareto_bound
+	real*8						            :: bound3	! pareto_bound
+	real*8						            :: bound4	! pareto_bound
 	real*8, dimension(:,:), allocatable		:: par_mat	! matrix with parameters
 	real*8, dimension(:,:), allocatable		:: Q_mat	! matrix with modelled Q
 	real*8, dimension(:,:), allocatable		:: qval_mat	! matrix with validated Q
@@ -69,36 +69,33 @@ USE mo_init_random_seed
 	real*8, dimension(:,:), allocatable		:: objval_mat	! matrix with validation objective functions
 	real*8, dimension(:,:), allocatable		:: pareto_obj	! matrix with pareto objective function values
 	real*8,dimension(size(sumax_data))      :: sumax_data2! sumax data
-!	real*8, dimension(:,:), allocatable		:: pareto_par	! matrix with pareto parameters
-!	real*8, dimension(:,:,:), allocatable		:: pareto_output! matrix with pareto output
-        integer                                         :: fileunit	
+    integer                                 :: fileunit	
 	real*8, dimension(:,:), allocatable		:: final_obj	! matrix with final objective function values
 	real*8, dimension(:,:), allocatable		:: final_par	! matrix with final parameters
-	real*8, dimension(:,:,:), allocatable		:: final_out    ! matrix with final
+	real*8, dimension(:,:,:), allocatable	:: final_out    ! matrix with final
 	real*8, dimension(:,:), allocatable		:: final_states ! matrix with final states
 	logical, dimension(:), allocatable		:: temp, temp1	! temperoray arrays
-	character(256)                        		:: formData	! format of data
-	character(256)                        		:: formDataObj	! format of data objectives
-	character(256)                        		:: formDataPar	! format of data parameters
-	character(256)                        		:: formHeader	! format of data headers
-	character(256)                        		:: formHeaderPar! format of headers
+	character(256)                        	:: formData	! format of data
+	character(256)                        	:: formDataObj	! format of data objectives
+	character(256)                        	:: formDataPar	! format of data parameters
+	character(256)                        	:: formHeader	! format of data headers
+	character(256)                        	:: formHeaderPar! format of headers
 	real*8, dimension(:,:), allocatable		:: incon_mat	! matrix with parameters
 	real*8,dimension(4)        		        :: incon_val	! initial conditions states
-	integer						:: pareto_length! number of pareto solutions
-	integer						:: uFinalStates	! file unit Q validation
-	integer						:: uObj		! file unit all objectives
-	integer						:: uObjPar	! file unit pareto objectives
-	integer						:: uObjval 	! file unit objectives validation
-	integer						:: uParam	! file unit parameters
-	integer						:: uParamPar	! file unit pareto parameters
-	integer						:: uSig 	! file unit objectives validation
-	integer						:: uSigVal 	! file unit objectives validation
-	integer						:: uQ 		! file unit Q
-	integer						:: uQPar	! file unit Q
-	integer						:: uQval	! file unit Q validation
-        real*8                                          :: fIt
-
-real :: start, finish
+	integer						            :: pareto_length! number of pareto solutions
+	integer						            :: uFinalStates	! file unit Q validation
+	integer						            :: uObj		! file unit all objectives
+	integer						            :: uObjPar	! file unit pareto objectives
+	integer						            :: uObjval 	! file unit objectives validation
+	integer						            :: uParam	! file unit parameters
+	integer						            :: uParamPar	! file unit pareto parameters
+	integer						            :: uSig 	! file unit objectives validation
+	integer						            :: uSigVal 	! file unit objectives validation
+	integer						            :: uQ 		! file unit Q
+	integer						            :: uQPar	! file unit Q
+	integer						            :: uQval	! file unit Q validation
+    real*8                                  :: fIt
+    real                                    :: start, finish
 
 call cpu_time(start)
 
@@ -145,7 +142,7 @@ forall(ii=1:size(paramset,1),optim(ii) .eqv. .TRUE.) paramset(ii)=r(ii)*(par_max
 	      call model(paramset,incon, prec_data( iw_start:iv_end ) &
 	      ,temp_data(iw_start:iv_end),etp_data(iw_start:iv_end), dem, cellsize, output,sumax_data)
             else
-               call gen_sumax(paramset(14:16), paramset(4), ichange_start, ichange_end, prec_data( iw_start:iv_end ), sumax_data2 )
+               call gen_sumax(paramset(15:17), paramset(4), ichange_start, ichange_end, prec_data( iw_start:iv_end ), sumax_data2 )
 
                call model(paramset,incon, prec_data( iw_start:iv_end ) &
 	      ,temp_data(iw_start:iv_end),etp_data(iw_start:iv_end), dem, cellsize, output,sumax_data2)
@@ -247,8 +244,8 @@ open(uQ, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Q.txt")), status='u
 open(uFinalStates, file=trim(adjustl(output_dir_cal)) // trim(adjustl("FinalStates.txt")), status='unknown', action='write')
 open(uObj, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Objectives.txt")), status='unknown', action='write')
 
-write(uParam,'(16(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
-                              "Kf", "Ks", "LP", "D", "Pmax", "Tlagf" ,"Tlags" ,"alpha","a", "b","sumax_min"
+write(uParam,'(17(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+                              "Kf", "Ks", "LP", "D", "Pmax", "Tlagf" ,"Tlags" ,"InfMax", "Kof","a", "b","sumax_min"
 
 write(formHeader, *) '(2X a10, 2X a10, 2X a10, 2X a10)'
 write(formDataObj, *) '(2X f10.3, 2X f10.3, 2X f10.3, 2X f10.3)'
@@ -264,7 +261,7 @@ do i=1, count_feasibles
 !       (1-obj_mat(4,i) .le. bound4)) then
         count_solutions   = count_solutions+1
         write(uObj,formDataObj)  obj_mat(1:4,i)
-        write(uParam,'(16(1X f10.2))')  par_mat(:,i)
+        write(uParam,'(17(1X f10.2))')  par_mat(:,i)
         write(uQ,'(100000(1X f6.2))')  Q_mat(:,i)
         write(uFinalStates,*) incon_mat(:,i)
 !   end if

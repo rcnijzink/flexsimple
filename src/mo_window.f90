@@ -15,141 +15,139 @@ USE mo_eval_signatures
 USE mo_signatures
 USE mo_init_random_seed
 
-	real*8,dimension(4), intent(in)		        :: incon	! initial conditions states
-	real*8,dimension(:), allocatable, intent(in)	:: etp_data	! evaporation data
-	real*8,dimension(:), allocatable, intent(in)	:: prec_data 	! precipitation data
-	real*8,dimension(:), allocatable, intent(in)	:: temp_data 	! temperature data
-        real*8, dimension(:,:), allocatable, intent(in)     :: dem
-        real*8,intent(in)                       :: cellsize
-	real*8,dimension(:), allocatable, intent(in)	:: Qobs_data	! observed discharge
+	real*8,dimension(4), intent(in)		                :: incon	! initial conditions states
+	real*8,dimension(:), allocatable, intent(in)	    :: etp_data	! evaporation data
+	real*8,dimension(:), allocatable, intent(in)	    :: prec_data 	! precipitation data
+	real*8,dimension(:), allocatable, intent(in)	    :: temp_data 	! temperature data
+    real*8, dimension(:,:), allocatable, intent(in)     :: dem
+    real*8,intent(in)                                   :: cellsize
+	real*8,dimension(:), allocatable, intent(in)	    :: Qobs_data	! observed discharge
 	character*10,dimension(:), allocatable, intent(in)	:: dates_data	! observed discharge
-        real*8,dimension(16) 				:: r		! random number array
-	real*8,dimension(16), intent(in)		:: par_ini	! maximum parameter values
-	real*8,dimension(16), intent(in)		:: par_max	! maximum parameter values
-	real*8,dimension(16), intent(in)		:: par_min	! minimum parameter values
-	logical,dimension(16), intent(in)		:: optim	! minimum parameter values
-	real*8,dimension(16)             		:: par_val	! minimum parameter values
-	real*8,dimension(16)             		:: paramset	! set of parameters
-	real*8,allocatable, dimension(:)		:: q		! modelled discharge
-	real*8,allocatable, dimension(:)		:: qval		! validation discharge
-	real*8, dimension(26)            	        :: EC    	! evalutation criteria
-	real*8, dimension(26) 	                        :: ECval    	! evalutation criteria
-	real*8						:: NSE		! Nash-Sutcliffe efficienct
-	real*8						:: LNSE		! log NSE
-	real*8						:: VE		! Volume error
-	real*8						:: FDC_NSE	! Nash of flow duration curve
-	real*8						:: NSE_val	! NSE for validation	
-	real*8						:: LNSE_val	! log NSE for validation
-	real*8						:: VE_val	! Volume error validation
-	real*8						:: FDC_NSE_val	! validation Nash FDC
-	integer						:: length	! length of period
-	integer						:: val_length	! length of validation period
-	real*8, allocatable, dimension(:,:)	        :: output	! output matrix
-	real*8, allocatable, dimension(:,:)	        :: output_ini	! output matrix
-	real*8, allocatable, dimension(:,:)	        :: output_val	! output matrix validation
-	integer						:: nn 		! counter
-	integer, allocatable, dimension(:)		:: seed		! initial random seed
-	integer						:: t		! counter
-	integer, allocatable, dimension(:)		:: count_feasibles !number of feasible sets
-	integer						:: count_solutions !number of final solutions
-	integer						:: j		! counter
-	integer						:: i		! counter
-	integer						:: k		! counter
-	integer						:: m		! counter
-	integer						:: jj		! counter
-	integer						:: ii		! counter
-        integer                                         :: iWindow      ! window counter
-	real*8						:: bound1	! pareto_bound
-	real*8						:: bound2	! pareto_bound
-	real*8						:: bound3	! pareto_bound
-	real*8						:: bound4	! pareto_bound
+    real*8,dimension(17) 				                :: r		! random number array
+	real*8,dimension(17), intent(in)		            :: par_ini	! maximum parameter values
+	real*8,dimension(17), intent(in)		            :: par_max	! maximum parameter values
+	real*8,dimension(17), intent(in)		            :: par_min	! minimum parameter values
+	logical,dimension(17), intent(in)		            :: optim	! minimum parameter values
+
+	real*8,dimension(17)             		            :: par_val	! minimum parameter values
+	real*8,dimension(17)             		            :: paramset	! set of parameters
+	real*8,allocatable, dimension(:)		            :: q		! modelled discharge
+	real*8,allocatable, dimension(:)		            :: qval		! validation discharge
+	real*8, dimension(26)            	                :: EC    	! evalutation criteria
+	real*8, dimension(26) 	                            :: ECval    	! evalutation criteria
+	real*8						                        :: NSE		! Nash-Sutcliffe efficienct
+	real*8						                        :: LNSE		! log NSE
+	real*8						                        :: VE		! Volume error
+	real*8						                        :: FDC_NSE	! Nash of flow duration curve
+	real*8						                        :: NSE_val	! NSE for validation	
+	real*8						                        :: LNSE_val	! log NSE for validation
+	real*8						                        :: VE_val	! Volume error validation
+	real*8						                        :: FDC_NSE_val	! validation Nash FDC
+	integer						                        :: length	! length of period
+	integer						                        :: val_length	! length of validation period
+	real*8, allocatable, dimension(:,:)	                :: output	! output matrix
+	real*8, allocatable, dimension(:,:)	                :: output_ini	! output matrix
+	real*8, allocatable, dimension(:,:)	                :: output_val	! output matrix validation
+	integer						                        :: nn 		! counter
+	integer, allocatable, dimension(:)		            :: seed		! initial random seed
+	integer						                        :: t		! counter
+	integer, allocatable, dimension(:)		            :: count_feasibles !number of feasible sets
+	integer						                        :: count_solutions !number of final solutions
+	integer						                        :: j		! counter
+	integer						                        :: i		! counter
+	integer						                        :: k		! counter
+	integer						                        :: m		! counter
+	integer						                        :: jj		! counter
+	integer						                        :: ii		! counter
+    integer                                             :: iWindow      ! window counter
+	real*8						                        :: bound1	! pareto_bound
+	real*8						                        :: bound2	! pareto_bound
+	real*8						                        :: bound3	! pareto_bound
+	real*8						                        :: bound4	! pareto_bound
         integer                                         :: end_ind
         integer                                         :: endyear
         integer                                         :: extra
-	real*8,dimension(:), allocatable        	:: prec_in 	! precipitation data
-	real*8,dimension(:), allocatable        	:: etp_in 	! precipitation data
-	real*8,dimension(:), allocatable        	:: temp_in 	! precipitation data
-	real*8, dimension(:,:), allocatable		:: par_mat	! matrix with parameters
-	real*8, dimension(:,:), allocatable		:: Q_mat	! matrix with modelled Q
-	real*8, dimension(:,:), allocatable		:: qval_mat	! matrix with validated Q
-	real*8, dimension(:,:), allocatable		:: outputval_mat! output validation		
-	real*8, dimension(:,:), allocatable		:: obj_mat	! matrix with objective functions
-	real*8, dimension(:,:), allocatable		:: pareto_obj	! matrix with pareto objective function values
-	real*8, dimension(:,:), allocatable		:: pareto_par	! matrix with pareto objective function values
-	real*8, dimension(:,:), allocatable		:: pareto_q	! matrix with pareto objective function values
-        integer                                         :: start_ind
-        integer                                         :: startyear
-        character(10)                                    :: temp_date
-        character(10)                                    :: temp_date2
-        integer                                         :: fileunit	
-	real*8, dimension(:,:), allocatable		:: final_obj	! matrix with final objective function values
-	real*8, dimension(:,:), allocatable		:: final_par	! matrix with final parameters
-	real*8, dimension(:,:,:), allocatable		:: final_out    ! matrix with final
-	real*8, dimension(:,:), allocatable		:: final_states ! matrix with final states
-	logical, dimension(:), allocatable		:: temp, temp1	! temperoray arrays
-	character(256)                        		:: formData	! format of data
-	character(256)                        		:: formDataObj	! format of data objectives
-	character(256)                        		:: formDataSig	! format of data objectives
-	character(256)                        		:: formDataPar	! format of data parameters
-	character(256)                        		:: formHeader	! format of data headers
-	character(256)                        		:: formHeaderSig! format of signature headers
-	character(256)                        		:: formHeaderPar! format of headers
-	real*8, dimension(:,:,:), allocatable		:: incon_mat	! matrix with parameters
-	real*8,dimension(4)        		        :: incon_val	! initial conditions states
-        integer                                         :: nWindow
-	integer						:: pareto_length! number of pareto solutions
-	integer						:: uFinalStates	! file unit Q validation
-	integer						:: uObj		! file unit all objectives
-	integer						:: uParam	! file unit parameters
-	integer						:: uQ 		! file unit Q
-	integer						:: uSig 		! file unit signatures
-	integer						:: uEa 		! file unit signatures
-	integer						:: uPeff 		! file unit signatures
-	integer						:: uEi 		! file unit signatures
-	integer						:: uSu 		! file unit signatures
-        real*8                                          :: fIt
-        character(10)                                   :: window_string
-
-
-        real*8                                          :: RCmod
-        real*8                                          :: var_p
-        real*8                                          :: var_q
-        real*8                                          :: var_qmod
-        real*8                                          :: var_mod
-        real*8                                          :: var
-        real*8,dimension(:,:), allocatable              :: FDC
-        real*8                                          :: KGE
-        real*8                                          :: LKGE
-        real*8                                          :: Q5
-        real*8                                          :: Q95
-        real*8                                          :: Q50
-        real*8                                          :: SFDC
-        real*8                                          :: RC
-        real*8                                          :: VR
-        real*8                                          :: HPC
-        real*8                                          :: LFR
-        real*8                                          :: RLD
-        real*8                                          :: DLD
-        real*8                                          :: SPDC
-        real*8                                          :: BFI
-        real*8                                          ::Qpeak10
-        real*8                                          ::Qpeak50
-        integer                                         :: SFDCcount
-        integer                                         :: RCcount
-        integer                                         :: VRcount
-        integer                                         :: HPCcount
-        integer                                         :: LFRcount
-        real*8                                         :: WB
-        real*8                                          :: maxBound
-        real*8                                          :: minBound
-        real*8                                          :: r2
-
-       real*8,dimension(3000)                           :: Qtest
-       real*8,dimension(3000)                           :: Qsimtest
-       real*8,dimension(3000)                           :: Ptest
-       real*8,dimension(2)                              :: tmp
-       real*8,dimension(2)                           :: dummy
-     integer                                            :: imax
+	real*8,dimension(:), allocatable        	        :: prec_in 	! precipitation data
+	real*8,dimension(:), allocatable        	        :: etp_in 	! precipitation data
+	real*8,dimension(:), allocatable        	        :: temp_in 	! precipitation data
+	real*8, dimension(:,:), allocatable		            :: par_mat	! matrix with parameters
+	real*8, dimension(:,:), allocatable		            :: Q_mat	! matrix with modelled Q
+	real*8, dimension(:,:), allocatable		            :: qval_mat	! matrix with validated Q
+	real*8, dimension(:,:), allocatable		            :: outputval_mat! output validation		
+	real*8, dimension(:,:), allocatable		            :: obj_mat	! matrix with objective functions
+	real*8, dimension(:,:), allocatable		            :: pareto_obj	! matrix with pareto objective function values
+	real*8, dimension(:,:), allocatable		            :: pareto_par	! matrix with pareto objective function values
+	real*8, dimension(:,:), allocatable		            :: pareto_q	! matrix with pareto objective function values
+    integer                                             :: start_ind
+    integer                                             :: startyear
+    character(10)                                       :: temp_date
+    character(10)                                       :: temp_date2
+    integer                                             :: fileunit	
+	real*8, dimension(:,:), allocatable		            :: final_obj	! matrix with final objective function values
+	real*8, dimension(:,:), allocatable		            :: final_par	! matrix with final parameters
+	real*8, dimension(:,:,:), allocatable		        :: final_out    ! matrix with final
+	real*8, dimension(:,:), allocatable		            :: final_states ! matrix with final states
+	logical, dimension(:), allocatable		            :: temp, temp1	! temperoray arrays
+	character(256)                        		        :: formData	! format of data
+	character(256)                        		        :: formDataObj	! format of data objectives
+	character(256)                        		        :: formDataSig	! format of data objectives
+	character(256)                        		        :: formDataPar	! format of data parameters
+	character(256)                        		        :: formHeader	! format of data headers
+	character(256)                        		        :: formHeaderSig! format of signature headers
+	character(256)                        		        :: formHeaderPar! format of headers
+	real*8, dimension(:,:,:), allocatable		        :: incon_mat	! matrix with parameters
+	real*8,dimension(4)        		                    :: incon_val	! initial conditions states
+    integer                                             :: nWindow
+	integer						                        :: pareto_length! number of pareto solutions
+	integer						                        :: uFinalStates	! file unit Q validation
+	integer						                        :: uObj		! file unit all objectives
+	integer						                        :: uParam	! file unit parameters
+	integer						                        :: uQ 		! file unit Q
+	integer						                        :: uSig 		! file unit signatures
+	integer						                        :: uEa 		! file unit signatures
+	integer						                        :: uPeff 		! file unit signatures
+	integer						                        :: uEi 		! file unit signatures
+	integer						                        :: uSu 		! file unit signatures
+    real*8                                              :: fIt
+    character(10)                                       :: window_string
+    real*8                                              :: RCmod
+    real*8                                              :: var_p
+    real*8                                              :: var_q
+    real*8                                              :: var_qmod
+    real*8                                              :: var_mod
+    real*8                                              :: var
+    real*8,dimension(:,:), allocatable                  :: FDC
+    real*8                                              :: KGE
+    real*8                                              :: LKGE
+    real*8                                              :: Q5
+    real*8                                              :: Q95
+    real*8                                              :: Q50
+    real*8                                              :: SFDC
+    real*8                                              :: RC
+    real*8                                              :: VR
+    real*8                                              :: HPC
+    real*8                                              :: LFR
+    real*8                                              :: RLD
+    real*8                                              :: DLD
+    real*8                                              :: SPDC
+    real*8                                              :: BFI
+    real*8                                              ::Qpeak10
+    real*8                                              ::Qpeak50
+    integer                                             :: SFDCcount
+    integer                                             :: RCcount
+    integer                                             :: VRcount
+    integer                                             :: HPCcount
+    integer                                             :: LFRcount
+    real*8                                              :: WB
+    real*8                                              :: maxBound
+    real*8                                              :: minBound
+    real*8                                              :: r2
+    real*8,dimension(3000)                              :: Qtest
+    real*8,dimension(3000)                              :: Qsimtest
+    real*8,dimension(3000)                              :: Ptest
+    real*8,dimension(2)                                 :: tmp
+    real*8,dimension(2)                                 :: dummy
+    integer                                             :: imax
 
 
 !initialize
@@ -169,10 +167,6 @@ uParam=14
 uQ=uParam+1+nWindow
 uObj=uQ+1+nWindow
 uSig=uObj+1+nWindow
-!uEa=uSig+10+nWindow
-!uEi=uEa+1+nWindow
-!uSu=uEi+1+nWindow
-!uPeff=uSnow+1+nWindow
 
 length=size(prec_data( iw_start:ic_end ))
 allocate( q( length) )
@@ -220,20 +214,9 @@ do iWindow =1, nWindow
              // trim(adjustl(".txt")),  status='unknown', action='write')
            open(uSig+iWindow, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Signatures_")) // trim(adjustl(window_string))  &
              // trim(adjustl(".txt")),  status='unknown', action='write')
-!           open(uEa+iWindow, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Ea_"))// trim(adjustl(window_string))&
-!             // trim(adjustl(".txt")),  status='unknown', action='write')
-!           open(uEi+iWindow, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Ei_"))// trim(adjustl(window_string))&
-!             // trim(adjustl(".txt")),  status='unknown', action='write')
-!           open(uSu+iWindow, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Su_"))// trim(adjustl(window_string))&
-!             // trim(adjustl(".txt")),  status='unknown', action='write')
 
- !           open(uPeff+iWindow, file=trim(adjustl(output_dir_cal)) // trim(adjustl("Peff_"))// trim(adjustl(window_string))&
- !            // trim(adjustl(".txt")),  status='unknown', action='write')
-
-
-
-           write(uParam+iwindow,'(14(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
-                              "Kf", "Ks", "LP", "D", "Pmax", "alpha","a", "b", "sumax_min"
+           write(uParam+iwindow,'(17(1X a8))')  "Meltfactor", "Tthresh", "Imax", "Sumax", "beta", &
+                              "Kf", "Ks", "LP", "D", "Pmax", "Tlagf", "Tlags", "InfMax", "Kof" ,"a", "b", "sumax_min"
 
 
            write(uObj+iWindow,formHeader) 'NSE','LNSE','VE', 'KGE', 'LKGE', 'WB'
@@ -250,11 +233,6 @@ end do
 
         forall(ii=1:size(paramset,1),optim(ii) .eqv. .TRUE.) paramset(ii)=r(ii)*(par_max(ii)-par_min(ii))+par_min(ii) 
 
-        !if(optim(7) .eqv. .TRUE.) then
-	!   call random_number(r2)
-        !   paramset(7)=r2*(par_max(7)-paramset(6))+paramset(6)
-        !end if
-
         !run the whole model
         !add artificial warmup period
         if(iw_start .eq. ic_start) then
@@ -270,10 +248,6 @@ end do
            temp_in =  temp_data( iw_start:ic_end ) 
         end if
 
-
-
-!	call model(paramset,output_ini(8:11,iw_end), prec_data( iw_start:ic_end ) &
-!	,temp_data(iw_start:ic_end),etp_data(iw_start:ic_end), dem, cellsize, output)
 
         call model(paramset,incon, prec_in, temp_in, etp_in, dem, cellsize, output)
 
@@ -319,53 +293,11 @@ end do
            call PeakDistribution(q(start_ind:end_ind), SPDC, Qpeak10, Qpeak50)
            call Limb_densities  (q(start_ind:end_ind), RLD, DLD)
 
-	   !keep parameter set when all signatures are between specified bounds
-
-           !******** test mode *********
-
-!          open(unit=30, file='/host/Documents/Sumax/Testdata_bristol/Qobs.txt'  , action='read')
-!          open(unit=31, file='/host/Documents/Sumax/Testdata_bristol/Prec.txt'  , action='read')
-!          open(unit=32, file='/host/Documents/Sumax/Testdata_bristol/Qsim.txt'  , action='read')
-
-!           do i=1, 3000
-!              read(30, *) Qtest(i)
-!              read(31, *) Ptest(i)
-!              read(32, *) Qsimtest(i)
-!           end do
-
-!          close(30)
-!          close(31)
-!          close(32)
-
-
-!	   call NashEfficiency(Qtest,Qsimtest, NSE)
-!	   call LogNashEfficiency(Qtest,Qsimtest, LNSE)
-!	   call VolumeError(Qtest,Qsimtest, VE)
-!	   call FDCNashEfficiency(Qtest,Qsimtest, FDC_NSE)
-!          call KlingGupta(Qtest,Qsimtest, KGE)
-!           call logKlingGupta(Qtest,Qsimtest, LKGE)
-
-!	   call FlowDurationCurves(Qtest, FDC, Q5, Q50, Q95, SFDC, LFR)
-!           call RunoffCoeff(Qtest, Ptest, RC)
-!           call VarRatio(Qtest, Ptest, VR)
-!           call HighPulsCount(Qtest, HPC)
-!           call BaseFlowIndex(Qtest, BFI)
-!           call PeakDistribution(Qtest, SPDC, Qpeak10, Qpeak50)
-!           call Limb_densities  (Qtest, RLD, DLD)
-
-
-           !***** end test **********
-
-
-
-           write(uParam+iwindow,'(16(1X f8.2))')  paramset         
+           write(uParam+iwindow,'(17(1X f8.2))')  paramset         
            write(uQ+iwindow,*)  output(1,start_ind:end_ind)
            write(uObj+iwindow,formDataObj) (/NSE, LNSE, VE, KGE, LKGE, WB/)
-!           write(uEa+iWindow,*) output(5,start_ind:end_ind)
            write(uSig+iwindow,formDataSig) (/RC, VR, SFDC, HPC,LFR, SPDC, BFI, RLD, DLD/)
-!           write(uEi+iWindow,*) output(6,start_ind:end_ind)
-!           write(uSu+iWindow,*) output(9,start_ind:end_ind)
- !          write(uPeff+iWindow,*) output(4,start_ind:end_ind)
+
  
         iWindow = iWindow+1 
 
@@ -375,7 +307,6 @@ end do
 
         if(nn .eq. int(fIt*Iterations)   ) then
         print *, "Iterations finished: ", nn
-        !print *, "Feasible solutions : ", count_feasibles 
         print *, ""
         fIt = fIt + 0.1
       end if
@@ -387,21 +318,9 @@ do iWindow =1, nWindow
            close(uQ+iWindow)
            close(uObj+iWindow)
            close(uSig+iWindow)
-!           close(uEa+iWindow)
-!           close(uEi+iWindow)
-!           close(uSu+iWindow)
-   !        close(uPeff+iWindow)
 end do
  
 
-
-!print *, "Feasible parameter sets:"
-!print *, count_feasibles
-!print *, ''
-
-!print *, 'Overview Non-Feasibles'
-!print *, '      RC    ','   VR       ','        SFDC   ','      HPC  ','     LFR  '
-!print *, RCcount , VRcount, SFDCcount, HPCcount, LFRcount
 
 
 

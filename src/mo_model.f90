@@ -8,7 +8,7 @@ CONTAINS
 
 USE mo_readdata
 
-     real*8, dimension(12), intent(in)	                 :: param	    ! model parameters
+     real*8, dimension(14), intent(in)	                 :: param	    ! model parameters
      real*8, dimension(4),intent(in)		             :: incon	    ! initial states	
      real*8,dimension(:), intent(in)		             :: prec	    ! precipation series
 	 real*8,dimension(:), intent(in)		             :: airt	    ! temperature series
@@ -36,9 +36,8 @@ USE mo_readdata
      real*8					::  Sumax        
      real*8					::  beta 
      real*8					::  Kf    
-     real*8					::  Kof                                 
      real*8					::  Ks               
-     real*8					::  Kf1               
+     real*8					::  Kof               
      real*8					::  LP        
      real*8					::  D
      real*8					::  Pmax
@@ -54,6 +53,7 @@ USE mo_readdata
      real*8					:: Sf
      real*8					:: Sd
      real*8					:: Ss
+     real*8					:: Sof
      real*8					:: Ss_in
      real*8					:: Ss_corr
 
@@ -80,7 +80,7 @@ USE mo_readdata
      real*8 					:: Eipdt	! degree day factor
 
      real*8 					:: Qf	! degree day factor
-     real*8 					:: Qf1	! degree day factor
+     real*8 					:: Qof	! degree day factor
      real*8 					:: Qr	! degree day factor
      real*8 					:: Qs	! degree day factor
      real*8 					:: Qs_tot	! degree day factor
@@ -122,6 +122,8 @@ USE mo_readdata
   Pmax        = param(10)
   Tlags       = param(11)
   Tlagf       = param(12)
+  Infmax      = param(13) 
+  Kof         = param(14)  
 
   !weights for lag functions
   call weighfun_triangle(Tlags, Weights_ss)
@@ -135,7 +137,7 @@ USE mo_readdata
 
   Su_accent = zero_dp
   Ss_corr = zero_dp
-
+  Sof= zero_dp
   Pr = zero_dp
 
   !call snow module
@@ -182,7 +184,26 @@ do it=1,tmax
   Si=Si-Eidt
   Eipdt=maxval( (/zero_dp, (Epdt-Eidt) /) )
 
+   !infiltration excess overland flow
+   if((Pedt) .gt. InfMax) then
 
+      Sof = Sof + Pedt
+      Pedt = zero_dp
+
+      Qof = Sof / Kof
+      Sof = Sof - Qof
+   else
+
+      if( Sof .gt. zero_dp) then
+         Qof = Sof / Kof
+         Sof = Sof - Qof
+      else
+         Qof = zero_dp
+      end if 
+
+   end if
+
+   !Unsaturated zone
    if((Pedt) .gt. zero_dp) then
 
       if( (Pedt +Su_accent) .lt. ((1+beta)*Sumax) ) then
@@ -203,7 +224,7 @@ do it=1,tmax
 
 
 
-!actual evaporation/transpiration
+  !actual evaporation/transpiration
   if(Su .lt. (Sumax*LP)) then
     Kt=Su/(Sumax*LP)
   else
@@ -276,7 +297,7 @@ do it=1,tmax
 ! Results
 !---------------------------------------------------
 
- Qm = Qs  + Qf + Qf1
+ Qm = Qs  + Qf + Qof
 
 
  !write fluxes to output
@@ -286,7 +307,7 @@ do it=1,tmax
        output(4,it)  = Peff(it)
        output(5,it)  = Eadt
        output(6,it)  = Eidt
-       output(7,it)  = Pr(it)
+       output(7,it)  = Qof
 
 !write states to output
 
@@ -317,7 +338,7 @@ end do
       Storage_out =  output(8,tmax) +&
                      output(9,tmax) +&
                      output(10,tmax)+&
-                     output(11, tmax) 
+                     output(11, tmax) + Sof
                      
 
       WB = Flux_in - Flux_out - (Storage_out-Storage_in) - &
@@ -328,7 +349,7 @@ end do
 if( (WB .gt. 0.00001) .or. (WB .lt. -0.00001) ) then
 print *, "WARNING: waterbalance not closed"
 print *, "Waterbalance:                  " , WB
-print *, Flux_out, Flux_in, Storage_in, Storage_out, Sumax, sum(Pr2_weighted), sum(output(3,:))
+print *, Flux_out, Flux_in, Storage_in, Storage_out
 stop
 end if
 
